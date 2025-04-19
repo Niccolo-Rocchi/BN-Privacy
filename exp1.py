@@ -1,17 +1,13 @@
-# Libraries
-import random
+## Libraries
 import numpy as np
-from pandas import testing as tm
+import pandas as pd
 import math
 from statsmodels.distributions.empirical_distribution import ECDF
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 from scipy.stats import norm
-
 import pyagrum as gum
-# import pyagrum.lib.notebook as gnb
+from pathlib import Path
 
-## Function of log-likelihood ratio
+## Log-likelihood ratio function
 def LLR(x: dict, bn_theta_ie, bn_theta_hat_ie):
 
     # Erase all evidences and apply addEvidence(key,value) for every pairs in x
@@ -43,17 +39,21 @@ def reject_H0(x: dict, bn_theta_ie, bn_theta_hat_ie, t: float) -> bool:
     return llr < t
 
 
-
-##################################################################
+### MAIN
 
 if __name__ == "__main__":
 
+    ## Create results directory
+    results_path = Path("./results")
+    results_path.mkdir(parents=True, exist_ok=True)
+
     ## Generate ground-truth BN
+    n_nodes = 3     # (must be n_nodes > 2)
     bn_gen = gum.BNGenerator()
-    bn = bn_gen.generate(n_nodes=10, n_arcs=15, n_modmax=3) #
+    bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=3, n_modmax=3) # 
 
     ## Generate data
-    gpop_ss = 5000  #
+    gpop_ss = 500  #
     ratio = 6   #
     pool_ss = gpop_ss // ratio
     rpop_ss = gpop_ss - pool_ss
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     assert(pool.shape[0]==pool_ss)
     assert(rpop.shape[0]==rpop_ss)
 
-    ## Estimate BN(theta), i.e. from rpop, and BN(theta_hat), i.e. from pool
+    ## Estimate BN(theta) from rpop and BN(theta_hat) from pool
     theta_learner=gum.BNLearner(rpop)
     theta_learner.useSmoothingPrior(1e-5)
     theta_hat_learner=gum.BNLearner(pool)
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     bn_theta = theta_learner.learnParameters(bn.dag())
     bn_theta_hat = theta_hat_learner.learnParameters(bn.dag())
 
-    ## Estimate BN(theta_min) and BN(theta_max) from a CN + local IDM
+    ## Estimate BN(theta_min) and BN(theta_max) from a CN by local IDM
     # Add counts of events to BN
     pop = pool
     for node in bn.names():
@@ -103,9 +103,9 @@ if __name__ == "__main__":
         bn.cpt(node).fillWith(counts_array.flatten().tolist())
     
     # Learn the CN through local IDM
-    s = 1   #
+    ess = 1   #
     cn = gum.CredalNet(bn)
-    cn.idmLearning(s)
+    cn.idmLearning(ess)
 
     # Extract min-max BNs
     cn.saveBNsMinMax("./bn_min.bif", "./bn_max.bif")
@@ -129,27 +129,64 @@ if __name__ == "__main__":
     ecdf_min = ECDF(L_im_min)
     ecdf_max = ECDF(L_im_max)
 
-    #####################################
-    # Example 1 (OK)
-    x = pool.iloc[4].to_dict()
-
-    alpha = 0.05
-    threshold = np.quantile(L_im, alpha).item()
-
-    print(f"Original: {reject_H0(x, bn_theta_ie, bn_theta_hat_ie, threshold)}")
-    print(f"Min: {reject_H0(x, bn_theta_ie, bn_max_ie, threshold)}")
-    print(f"Max: {reject_H0(x, bn_theta_ie, bn_min_ie, threshold)}")
-
-    # Example 2 (OK)
+    ## Computation
+    # Set ground truth membership
     gpop["in-pool"] = False
     gpop.loc[pool_idx, "in-pool"] = True
     
-    y_pred_min = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_max_ie, threshold), axis=1)
-    y_pred_max = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_min_ie, threshold), axis=1)
-    
-    cons = y_pred_min == y_pred_max
-    cm_count = confusion_matrix(gpop[cons]["in-pool"], y_pred_min[cons], labels=[True, False])
-    cm = cm_count / gpop_ss
+    assert(sum(gpop["in-pool"] == True) == pool_ss)
 
-    print(cm)
+    # Set threshold range
+    t_range = np.arange(-1e1, 1e1, 0.05)    #
 
+    # Init the error vector 
+    error = []
+
+    # Init the power vector (BN)
+    power_bn = []
+
+    # For each threshold ...
+    for t in t_range:
+
+        # Store the related error
+        error = error + [ecdf(t)]
+
+        # Perform LR test on whole population
+        y_pred = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_theta_hat_ie, t), axis=1)
+
+        # Compute and store power (tpr)
+        tpr = sum(gpop["in-pool"] & y_pred) / gpop_ss
+        power_bn = power_bn + [tpr]
+
+    # Init the power vector (CN)
+    power_cn = []
+
+    # For each threshold ...
+    for t in t_range:
+
+        # Perform min-max LR test on whole population
+        y_pred_min = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_max_ie, t), axis=1)
+        y_pred_max = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_min_ie, t), axis=1)
+        cons = y_pred_min == y_pred_max
+
+        # Compute and store power (tpr)
+        tpr = sum(gpop[cons]["in-pool"] & y_pred_min[cons]) / gpop_ss
+        power_cn = power_cn + [tpr]
+
+    # Compute theoretical bound
+    compl = bn.dim()
+    bound = math.sqrt(compl/pool_ss)
+
+    # Find power (beta) for any error (alpha) given theoretical bound
+    z_alpha = [norm.ppf(1 - i).item() for i in error]
+    z_one_minus_beta = [bound - i for i in z_alpha]
+    beta = [norm.cdf(i).item() for i in z_one_minus_beta]
+
+    ## Save results
+    results = pd.DataFrame(
+        {"error": error,
+        "power_bound": beta,
+        "power_BN": power_bn,
+        "power_CN": power_cn}
+    )
+    results.to_csv(f"./results/nnodes{n_nodes}-compl{compl}-s{ess}.csv")
