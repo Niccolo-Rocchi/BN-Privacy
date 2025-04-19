@@ -2,7 +2,6 @@
 import numpy as np
 import pandas as pd
 import math
-from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.stats import norm
 import pyagrum as gum
 from pathlib import Path
@@ -123,14 +122,12 @@ if __name__ == "__main__":
     bn_min_ie = gum.LazyPropagation(bn_min)
     bn_max_ie = gum.LazyPropagation(bn_max)
 
-    # Estimate the distribution of LLR(x) from rpop
-    L_im = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1)
-    L_im = L_im.dropna()
+    # Estimate the distributions of LLR(x) from rpop
+    L_im = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1).dropna().sort_values()
+    L_im_min = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_min_ie), axis=1).dropna().sort_values()
+    L_im_max = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_max_ie), axis=1).dropna().sort_values()
 
-    # Estimate the ECDF
-    ecdf = ECDF(L_im)
-
-    ## Computation
+    ## Membership inference
     # Set ground truth membership
     gpop["in-pool"] = False
     gpop.loc[pool_idx, "in-pool"] = True
@@ -138,24 +135,19 @@ if __name__ == "__main__":
     
     # assert(sum(gpop["in-pool"] == True) == pool_ss)
 
-    # Set threshold range
-    t_range = np.arange(-0.5, 0.5, 0.02)    #
-
-    # Init the threshold and error vectors
-    threshold = [] 
-    error = []
+    # Set error (alpha) range
+    error = np.arange(0, 1, 0.05)    #
 
     # Init the power vector (BN)
     power_bn = []
 
-    # For each threshold ...
-    for t in t_range:
+    # For each error ...
+    for e in error:
 
-        # Store the threshold and related error
-        threshold = threshold + [t]
-        error = error + [ecdf(t)]
+        # Compute threshold
+        t = np.quantile(L_im, e).item()
 
-        # Perform LR test on whole population
+        # Perform LLR test on whole population
         y_pred = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_theta_hat_ie, t), axis=1)
 
         # Compute and store power (tpr)
@@ -164,18 +156,29 @@ if __name__ == "__main__":
 
     # Init the power vector (CN)
     power_cn = []
+    power_cn_min = []
+    power_cn_max = []
 
-    # For each threshold ...
-    for t in t_range:
+    # For each error ...
+    for e in error:
 
-        # Perform min-max LR test on whole population
-        y_pred_min = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_max_ie, t), axis=1)
-        y_pred_max = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_min_ie, t), axis=1)
+        # Compute thresholds
+        t_min = np.quantile(L_im_min, e).item()
+        t_max = np.quantile(L_im_max, e).item()        
+
+        # Perform min-max LLR test on whole population
+        y_pred_min = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_min_ie, t_min), axis=1)
+        y_pred_max = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_max_ie, t_max), axis=1)
         cons = y_pred_min == y_pred_max
 
-        # Compute and store power (tpr)
+        # Compute and store powers (tpr)
         tpr = sum(gpop[cons]["in-pool"] & y_pred_min[cons]) / tp
+        tpr_min = sum(gpop["in-pool"] & y_pred_min) / tp
+        tpr_max = sum(gpop["in-pool"] & y_pred_max) / tp
+
         power_cn = power_cn + [tpr]
+        power_cn_min = power_cn_min + [tpr_min]
+        power_cn_max = power_cn_max + [tpr_max]
 
     # Compute theoretical bound
     compl = bn.dim()
@@ -188,11 +191,11 @@ if __name__ == "__main__":
 
     ## Save results
     results = pd.DataFrame(
-        {"threshold": threshold,
-        "error": error,
+        {"error": error,
         "power_bound": beta,
         "power_BN": power_bn,
-        "power_CN": power_cn}
+        "power_CN": power_cn,
+        "power_CN_min": power_cn_min,
+        "power_CN_max": power_cn_max}
     )
-    results = results.groupby("error", as_index=False).max()
     results.to_csv(f"./results/nnodes{n_nodes}-compl{compl}-s{ess}.csv")
