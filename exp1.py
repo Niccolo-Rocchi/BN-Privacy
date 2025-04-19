@@ -6,6 +6,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.stats import norm
 import pyagrum as gum
 from pathlib import Path
+from pandarallel import pandarallel
 
 ## Log-likelihood ratio function
 def LLR(x: dict, bn_theta_ie, bn_theta_hat_ie):
@@ -22,7 +23,7 @@ def LLR(x: dict, bn_theta_ie, bn_theta_hat_ie):
 
     # Check for denominator
     if L_theta_hat < 1e-16:
-        return None
+        return np.nan
     
     return math.log(L_theta / L_theta_hat)
 
@@ -33,7 +34,7 @@ def reject_H0(x: dict, bn_theta_ie, bn_theta_hat_ie, t: float) -> bool:
     llr = LLR(x, bn_theta_ie, bn_theta_hat_ie)
 
     # If denominator is 0, then don't reject H0
-    if llr is None:
+    if llr == np.nan:
         return False
     
     return llr < t
@@ -43,6 +44,9 @@ def reject_H0(x: dict, bn_theta_ie, bn_theta_hat_ie, t: float) -> bool:
 
 if __name__ == "__main__":
 
+    # Initialize parallelization
+    pandarallel.initialize(progress_bar=False)
+
     ## Create results directory
     results_path = Path("./results")
     results_path.mkdir(parents=True, exist_ok=True)
@@ -50,10 +54,10 @@ if __name__ == "__main__":
     ## Generate ground-truth BN
     n_nodes = 3     # (must be n_nodes > 2)
     bn_gen = gum.BNGenerator()
-    bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=3, n_modmax=3) # 
+    bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=2, n_modmax=2) # 
 
     ## Generate data
-    gpop_ss = 500  #
+    gpop_ss = 5000  #
     ratio = 6   #
     pool_ss = gpop_ss // ratio
     rpop_ss = gpop_ss - pool_ss
@@ -120,14 +124,11 @@ if __name__ == "__main__":
     bn_max_ie = gum.LazyPropagation(bn_max)
 
     # Estimate the distribution of LLR(x) from rpop
-    L_im = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1)
-    L_im_min = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_max_ie), axis=1)
-    L_im_max = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_min_ie), axis=1)
+    L_im = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1)
+    L_im = L_im.dropna()
 
-    # Estimate the ECDFs
+    # Estimate the ECDF
     ecdf = ECDF(L_im)
-    ecdf_min = ECDF(L_im_min)
-    ecdf_max = ECDF(L_im_max)
 
     ## Computation
     # Set ground truth membership
@@ -152,7 +153,7 @@ if __name__ == "__main__":
         error = error + [ecdf(t)]
 
         # Perform LR test on whole population
-        y_pred = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_theta_hat_ie, t), axis=1)
+        y_pred = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_theta_hat_ie, t), axis=1)
 
         # Compute and store power (tpr)
         tpr = sum(gpop["in-pool"] & y_pred) / gpop_ss
@@ -165,8 +166,8 @@ if __name__ == "__main__":
     for t in t_range:
 
         # Perform min-max LR test on whole population
-        y_pred_min = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_max_ie, t), axis=1)
-        y_pred_max = gpop[[*bn.names()]].apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_min_ie, t), axis=1)
+        y_pred_min = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_max_ie, t), axis=1)
+        y_pred_max = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_min_ie, t), axis=1)
         cons = y_pred_min == y_pred_max
 
         # Compute and store power (tpr)
@@ -189,4 +190,5 @@ if __name__ == "__main__":
         "power_BN": power_bn,
         "power_CN": power_cn}
     )
+    results = results.groupby("error", as_index=False, ).max()
     results.to_csv(f"./results/nnodes{n_nodes}-compl{compl}-s{ess}.csv")
