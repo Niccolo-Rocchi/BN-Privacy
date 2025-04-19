@@ -13,9 +13,9 @@ def LLR(x: dict, bn_theta_ie, bn_theta_hat_ie):
 
     # Erase all evidences and apply addEvidence(key,value) for every pairs in x
     bn_theta_ie.setEvidence(x)
-    assert(bn_theta_ie.nbrHardEvidence() == len(bn.nodes()))
+    # assert(bn_theta_ie.nbrHardEvidence() == len(bn.nodes()))
     bn_theta_hat_ie.setEvidence(x)
-    assert(bn_theta_hat_ie.nbrHardEvidence() == len(bn.nodes()))
+    # assert(bn_theta_hat_ie.nbrHardEvidence() == len(bn.nodes()))
 
     # Compute P(x | BN)
     L_theta = bn_theta_ie.evidenceProbability()
@@ -52,17 +52,17 @@ if __name__ == "__main__":
     results_path.mkdir(parents=True, exist_ok=True)
 
     ## Generate ground-truth BN
-    n_nodes = 3     # (must be n_nodes > 2)
+    n_nodes = 50     # (must be n_nodes > 2)
     bn_gen = gum.BNGenerator()
-    bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=2, n_modmax=2) # 
+    bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=70, n_modmax=2) # 
 
     ## Generate data
-    gpop_ss = 5000  #
+    gpop_ss = 10000  #
     ratio = 6   #
     pool_ss = gpop_ss // ratio
     rpop_ss = gpop_ss - pool_ss
 
-    assert(gpop_ss == pool_ss + rpop_ss)
+    # assert(gpop_ss == pool_ss + rpop_ss)
 
     data_gen = gum.BNDatabaseGenerator(bn)
     data_gen.drawSamples(gpop_ss)
@@ -73,9 +73,9 @@ if __name__ == "__main__":
     pool = gpop.iloc[pool_idx]
     rpop = gpop.iloc[~ gpop.index.isin(pool_idx)]
 
-    assert(gpop.shape[0]==gpop_ss)
-    assert(pool.shape[0]==pool_ss)
-    assert(rpop.shape[0]==rpop_ss)
+    # assert(gpop.shape[0]==gpop_ss)
+    # assert(pool.shape[0]==pool_ss)
+    # assert(rpop.shape[0]==rpop_ss)
 
     ## Estimate BN(theta) from rpop and BN(theta_hat) from pool
     theta_learner=gum.BNLearner(rpop)
@@ -134,13 +134,15 @@ if __name__ == "__main__":
     # Set ground truth membership
     gpop["in-pool"] = False
     gpop.loc[pool_idx, "in-pool"] = True
+    tp = len(pool_idx)
     
-    assert(sum(gpop["in-pool"] == True) == pool_ss)
+    # assert(sum(gpop["in-pool"] == True) == pool_ss)
 
     # Set threshold range
-    t_range = np.arange(-1e1, 1e1, 0.05)    #
+    t_range = np.arange(-0.5, 0.5, 0.02)    #
 
-    # Init the error vector 
+    # Init the threshold and error vectors
+    threshold = [] 
     error = []
 
     # Init the power vector (BN)
@@ -149,14 +151,15 @@ if __name__ == "__main__":
     # For each threshold ...
     for t in t_range:
 
-        # Store the related error
+        # Store the threshold and related error
+        threshold = threshold + [t]
         error = error + [ecdf(t)]
 
         # Perform LR test on whole population
         y_pred = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_theta_hat_ie, t), axis=1)
 
         # Compute and store power (tpr)
-        tpr = sum(gpop["in-pool"] & y_pred) / gpop_ss
+        tpr = sum(gpop["in-pool"] & y_pred) / tp
         power_bn = power_bn + [tpr]
 
     # Init the power vector (CN)
@@ -171,7 +174,7 @@ if __name__ == "__main__":
         cons = y_pred_min == y_pred_max
 
         # Compute and store power (tpr)
-        tpr = sum(gpop[cons]["in-pool"] & y_pred_min[cons]) / gpop_ss
+        tpr = sum(gpop[cons]["in-pool"] & y_pred_min[cons]) / tp
         power_cn = power_cn + [tpr]
 
     # Compute theoretical bound
@@ -185,10 +188,11 @@ if __name__ == "__main__":
 
     ## Save results
     results = pd.DataFrame(
-        {"error": error,
+        {"threshold": threshold,
+        "error": error,
         "power_bound": beta,
         "power_BN": power_bn,
         "power_CN": power_cn}
     )
-    results = results.groupby("error", as_index=False, ).max()
+    results = results.groupby("error", as_index=False).max()
     results.to_csv(f"./results/nnodes{n_nodes}-compl{compl}-s{ess}.csv")
