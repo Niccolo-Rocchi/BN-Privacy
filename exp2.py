@@ -86,7 +86,7 @@ if __name__ == "__main__":
     bn_theta_hat = theta_hat_learner.learnParameters(bn.dag())
 
     ## Compute BN(theta_min) and BN(theta_max) from contamination of original BN (no need to build a CN)
-    eps = 0.3
+    eps = 0.01
     bn_min=gum.BayesNet(bn)
     bn_max=gum.BayesNet(bn)
     for n in bn.nodes():

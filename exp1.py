@@ -198,4 +198,4 @@ if __name__ == "__main__":
         "power_CN_min": power_cn_min,
         "power_CN_max": power_cn_max}
     )
-    results.to_csv(f"./results/nnodes{n_nodes}-compl{compl}-s{ess}.csv")
+    results.to_csv(f"./results/compl{compl}-s{ess}.csv")
