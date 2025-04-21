@@ -14,6 +14,7 @@ from contextlib import redirect_stdout
 from itertools import product
 from more_itertools import random_product
 from tqdm import tqdm
+import warnings
 
 # Log-likelihood ratio (LLR) function
 def LLR(x: dict, theta, theta_hat):
@@ -28,25 +29,13 @@ def LLR(x: dict, theta, theta_hat):
 
     # Check for denominator
     if L_theta_hat < 1e-16:
-        return np.nan
+        return np.inf
     
     # Debug
     # assert(theta.nbrHardEvidence() == len(bn.nodes()))
     # assert(theta_hat.nbrHardEvidence() == len(bn.nodes()))
 
     return math.log(L_theta / L_theta_hat)
-
-# LLR test
-def reject_H0(x: dict, theta, theta_hat, t: float) -> bool:
-
-    # Compute the value of LLR(x)
-    llr = LLR(x, theta, theta_hat)
-
-    # If denominator is 0, then don't reject H0
-    if llr == np.nan:
-        return False
-    
-    return llr < t
 
 # Parse the credal network (TODO: improve)
 def parse_credal_net(cn_str: str):
@@ -160,32 +149,33 @@ def are_all_bn_different(bn_list):
 if __name__ == "__main__":
 
     print("--- Start ---")
+    warnings.filterwarnings('ignore')
 
     # Init hyperparameters
-    print("Initialize hyperparameters ...", end=" ")
-    n_nodes = 4                     # Number of nodes
-    n_arcs  = 6                     # Number of edges
+    # print("Initialize hyperparameters ...", end=" ")
+    n_nodes = 50                    # Number of nodes
+    n_arcs  = 70                    # Number of edges
     n_modmax = 2                    # Max number of modalities per node
-    gpop_ss = 1000                  # Sample size (general population)
-    ratio = 5                       # Sample sizes ratio (i.e., pool : reference population = 1 : ratio)
-    eps = 0.01                      # Contamination for CN
-    n_bns = 2                       # Number of vertices BNs to extract from CN simplex
+    gpop_ss = 10000                 # Sample size (general population)
+    ratio = 10                      # Sample sizes ratio (i.e., pool : reference population = 1 : ratio)
+    eps = 0.001                     # Contamination for CN
+    n_bns = 50                      # Number of vertices BNs to extract from CN simplex
     error = np.arange(0, 1, 0.05)   # Error (alpha) range
-    print("[OK]")
+    # print("[OK]")
 
     # Init parallelization
-    print("Initialize parallelization on ALL cores ...", end=" ")
+    # print("Initialize parallelization on ALL cores ...", end=" ")
     pandarallel.initialize(progress_bar=False, verbose=1)   # Show only warnings
-    print("[OK]")
+    # print("[OK]")
 
     # Generate ground-truth BN
-    print("Generate BN ...", end=" ")
+    # print("Generate BN ...", end=" ")
     bn_gen = gum.BNGenerator()
     bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=n_arcs, n_modmax=n_modmax)
-    print("[OK]")
+    # print("[OK]")
 
     # Sample data   
-    print("Sample data ...", end=" ")
+    # print("Sample data ...", end=" ")
     data_gen = gum.BNDatabaseGenerator(bn)
     data_gen.drawSamples(gpop_ss)
     data_gen.setDiscretizedLabelModeRandom()
@@ -195,7 +185,7 @@ if __name__ == "__main__":
     pool_idx = np.random.choice(gpop_ss, replace=False, size=pool_ss)
     pool = gpop.iloc[pool_idx]
     rpop = gpop.iloc[~ gpop.index.isin(pool_idx)]
-    print("[OK]")
+    # print("[OK]")
 
     # Debug
     # assert(gpop_ss == gpop.shape[0])
@@ -235,7 +225,7 @@ if __name__ == "__main__":
     are_all_bn_different(bns_simplex)
 
     ## MIA (theoretical)
-    print(f"Compute theoretical power ...", end=" ")
+    # print(f"Compute theoretical power ...", end=" ")
     # Set ground truth membership
     gpop["in-pool"] = False
     gpop.loc[pool_idx, "in-pool"] = True
@@ -249,7 +239,7 @@ if __name__ == "__main__":
     z_alpha = [norm.ppf(1 - i).item() for i in error]
     z_one_minus_beta = [bound - i for i in z_alpha]
     beta = [norm.cdf(i).item() for i in z_one_minus_beta]
-    print("[OK]")
+    # print("[OK]")
 
     # Init results
     results = pd.DataFrame(
@@ -264,6 +254,9 @@ if __name__ == "__main__":
     bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
     L_im = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1).dropna().sort_values() 
 
+    # Compute LLR(x) on general population
+    llr_gpop = gpop[[*bn.names()]].parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1)
+
     # Init the power vector (BN)
     power_bn = []
 
@@ -273,8 +266,8 @@ if __name__ == "__main__":
         # Compute threshold
         t = np.quantile(L_im, e).item()
 
-        # Perform LLR test on whole population
-        y_pred = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_theta_hat_ie, t), axis=1)
+        # LLR test. Reject H_0? True => x in pool; False => x in rpop.
+        y_pred = llr_gpop < t
 
         # Compute and store power (tpr)
         tpr = sum(gpop["in-pool"] & y_pred) / tp
@@ -292,6 +285,9 @@ if __name__ == "__main__":
         bn_vertex_ie = gum.LazyPropagation(bn_vertex)
         L_im_vertex = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_vertex_ie), axis=1).dropna().sort_values()
 
+        # Compute LLR(x) on general population
+        llr_gpop_vertex = gpop[[*bn.names()]].parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_vertex_ie), axis=1)
+
         # Init the power vector (BN vertex)
         power_bn_vertex = []
 
@@ -301,9 +297,9 @@ if __name__ == "__main__":
             # Compute threshold
             t = np.quantile(L_im_vertex, e).item()
 
-            # Perform LLR test on whole population
-            y_pred_vertex = gpop[[*bn.names()]].parallel_apply(lambda x: reject_H0(x.to_dict(), bn_theta_ie, bn_vertex_ie, t), axis=1)
-
+            # LLR test. Reject H_0? True => x in pool; False => x in rpop.
+            y_pred_vertex = llr_gpop_vertex < t
+            
             # Compute and store power (tpr)
             tpr = sum(gpop["in-pool"] & y_pred_vertex) / tp
             power_bn_vertex = power_bn_vertex + [tpr]
@@ -312,9 +308,9 @@ if __name__ == "__main__":
         results[f"power_BN_v_{i}"] = power_bn_vertex
 
     # Save results
-    print("Save results ...", end=" ")
+    # print("Save results ...", end=" ")
     results_path = Path("./results")
     results_path.mkdir(parents=True, exist_ok=True)
     results.to_csv(f"./results/compl{compl}-eps{eps}.csv")
-    print("[OK]")
+    # print("[OK]")
     print("--- Quit ---")
