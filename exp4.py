@@ -168,7 +168,7 @@ if __name__ == "__main__":
     n_modmax = 2                    # Max number of modalities per node
     gpop_ss = 1000                  # Sample size (general population)
     ratio = 5                       # Sample sizes ratio (i.e., pool : reference population = 1 : ratio)
-    ess = 1                         # Equivalent sample size (ESS) for local IDM
+    eps = 0.01                      # Contamination for CN
     n_bns = 2                       # Number of vertices BNs to extract from CN simplex
     error = np.arange(0, 1, 0.05)   # Error (alpha) range
     print("[OK]")
@@ -212,29 +212,20 @@ if __name__ == "__main__":
     bn_theta_hat = theta_hat_learner.learnParameters(bn.dag())
     print("[OK]")
 
-    ## Estimate CN by local IDM
-    print(f"Estimate CN from pool by local IDM with ESS={ess} ...", end=" ")
-    # Add counts of events to BN (from pool)
-    for node in bn.names():
-        var = bn.variable(node)
-        parents = bn.parents(node)
-        parent_names = [bn.variable(p).name() for p in parents]
+    ## Estimate CN by contamination
+    print(f"Estimate CN by contamination with eps={eps} ...", end=" ")
 
-        shape = [bn.variable(p).domainSize() for p in parents] + [var.domainSize()]
-        counts_array = np.zeros(shape, dtype=float)  # float, not int!
+    # Init min & max BNs
+    bn_min=gum.BayesNet(bn)
+    bn_max=gum.BayesNet(bn)
+    for n in bn.nodes():
+        x=eps*min(bn.cpt(n).min(),1-bn.cpt(n).max())
+        bn_min.cpt(n).translate(-x)
+        bn_max.cpt(n).translate(x)
 
-        for _, row in pool.iterrows():
-            try:
-                key = tuple([int(row[p]) for p in parent_names] + [int(row[node])])
-                counts_array[key] += 1.0
-            except KeyError:
-                continue
-
-        bn.cpt(node).fillWith(counts_array.flatten().tolist())
-    
-    # Learn the CN
-    cn = gum.CredalNet(bn)
-    cn.idmLearning(ess)
+    # Create CN
+    cn=gum.CredalNet(bn_min,bn_max)
+    cn.intervalToCredal()
     print("[OK]")
 
     # Extract random subset of simplex
@@ -324,6 +315,6 @@ if __name__ == "__main__":
     print("Save results ...", end=" ")
     results_path = Path("./results")
     results_path.mkdir(parents=True, exist_ok=True)
-    results.to_csv(f"./results/compl{compl}-ESS{ess}.csv")
+    results.to_csv(f"./results/compl{compl}-eps{eps}.csv")
     print("[OK]")
     print("--- Quit ---")
