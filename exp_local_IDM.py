@@ -17,7 +17,7 @@ warnings.filterwarnings('once')
 if __name__ == "__main__":
 
     # Create results directory if not exists
-    results_path = Path("./results")
+    results_path = Path("./results/idm")
     results_path.mkdir(parents=True, exist_ok=True)
 
     # Import and init hyperparameters
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         results["power_BN"] = power_bn
 
         ## MIA (CN)
-        print(f"Compute CN power on {n_bns} BN vertices...")
+        print(f"Compute CN power on {n_bns} inner BNs...")
         for i, bn_vertex in enumerate(tqdm(bns_sample, unit="item", dynamic_ncols=True)):
 
             # Estimate the distribution of LLR(x) from rpop (i..e under H_0)
@@ -177,4 +177,4 @@ if __name__ == "__main__":
             results[f"power_BN_v_{i}"] = power_bn_vertex
 
         # Save results
-        results.to_csv(f"./results/idm-{conf['meta']}-compl{compl}.csv")
+        results.to_csv(f"./results/idm/{conf['meta']}-compl{compl}.csv")

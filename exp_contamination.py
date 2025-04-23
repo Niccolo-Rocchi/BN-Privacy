@@ -17,7 +17,7 @@ warnings.filterwarnings('once')
 if __name__ == "__main__":
 
     # Create results directory if not exists
-    results_path = Path("./results")
+    results_path = Path("./results/cont")
     results_path.mkdir(parents=True, exist_ok=True)
 
     # Import and init hyperparameters
@@ -169,4 +169,4 @@ if __name__ == "__main__":
             results[f"power_BN_v_{i}"] = power_bn_vertex
 
         # Save results
-        results.to_csv(f"./results/cont-{conf['meta']}-compl{compl}.csv")
+        results.to_csv(f"./results/cont/{conf['meta']}-compl{compl}.csv")

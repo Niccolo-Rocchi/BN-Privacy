@@ -1,2 +1,6 @@
+__pycache__/
+Notebooks/
+results/
 venv/
-Examples/
+README.md
+
