@@ -2,3 +2,4 @@ venv/
 *.bif
 *.csv
 *.pyc
+__pycache__

@@ -1,0 +1,19 @@
+invar:                            # Invariant configs
+  n_modmax: 2                     # Max number of modalities per node
+  gpop_ss: 10000                  # Sample size (general population)
+  ratio: 10                       # Sample sizes ratio (i.e., pool : reference population: 1 : ratio)
+  error: np.arange(0, 1, 0.05)    # Error (alpha) range
+  n_bns: 5                        # Number of BNs to extract from credal set  
+
+var:                                # Variable configs
+  - n_nodes: 5                      # Number of nodes
+    n_arcs : 7                      # Number of edges
+    ess: 1                          # Equivalent sample size (ESS) for local IDM
+    eps: 0.001                      # Contamination for CN
+    meta: exp_1                     # Number of experiment
+
+  - n_nodes: 10
+    n_arcs : 15
+    ess: 1
+    eps: 0.001
+    meta: exp_2
