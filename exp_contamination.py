@@ -6,14 +6,7 @@ from scipy.stats import norm
 import pyagrum as gum
 from pathlib import Path
 from pandarallel import pandarallel
-from collections import defaultdict
 import numpy as np
-from numpy.random import random_sample
-import io
-import re
-from contextlib import redirect_stdout
-from itertools import product
-from more_itertools import random_product
 from tqdm import tqdm
 import warnings
 from utils import *
@@ -31,7 +24,7 @@ if __name__ == "__main__":
     n_modmax = 2                    # Max number of modalities per node
     gpop_ss = 10000                 # Sample size (general population)
     ratio = 10                      # Sample sizes ratio (i.e., pool : reference population = 1 : ratio)
-    eps = 0.001                     # Contamination for CN
+    eps = 0.01                      # Contamination for CN
     n_bns = 5                       # Number of vertices BNs to extract from CN simplex
     error = np.arange(0, 1, 0.05)   # Error (alpha) range
     # print("[OK]")

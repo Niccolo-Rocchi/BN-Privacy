@@ -1,11 +1,7 @@
 # Libraries
 import numpy as np
-import pandas as pd
 import math
-from scipy.stats import norm
 import pyagrum as gum
-from pathlib import Path
-from pandarallel import pandarallel
 from collections import defaultdict
 import numpy as np
 from numpy.random import random_sample
@@ -14,8 +10,6 @@ import re
 from contextlib import redirect_stdout
 from itertools import product
 from more_itertools import random_product
-from tqdm import tqdm
-import warnings
 
 # Log-likelihood ratio (LLR) function
 def LLR(x: dict, theta, theta_hat):
@@ -158,11 +152,15 @@ def get_simplex_inner(cn, n: int) -> list:
 
     # Define BN generator
     def gen_bn(slots):
-        p_1 = [(vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0] for _, _, vecs in slots]
+        try:
+            p_1 = [(vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0] for _, _, vecs in slots]
+        except IndexError:
+            p_1 = [vecs[0][0] for _, _, vecs in slots]
+
         p = [[x, 1-x] for x in p_1]
 
         # Debug
-        # assert(np.sum(np.array(p), axis=1).all() == 1.)
+        assert(np.sum(np.array(p), axis=1).all() == 1.)
 
         yield p
 
