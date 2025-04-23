@@ -1,4 +1,4 @@
-## Libraries
+# Libraries
 import numpy as np
 import pandas as pd
 import math
@@ -8,6 +8,7 @@ from pathlib import Path
 from pandarallel import pandarallel
 from collections import defaultdict
 import numpy as np
+from numpy.random import random_sample
 import io
 import re
 from contextlib import redirect_stdout
@@ -15,136 +16,8 @@ from itertools import product
 from more_itertools import random_product
 from tqdm import tqdm
 import warnings
+from utils import *
 
-# Log-likelihood ratio (LLR) function
-def LLR(x: dict, theta, theta_hat):
-
-    # Erase all evidences and apply addEvidence(key,value) for every pairs in x
-    theta.setEvidence(x)
-    theta_hat.setEvidence(x)
-
-    # Compute P(x | BN)
-    L_theta = theta.evidenceProbability()
-    L_theta_hat = theta_hat.evidenceProbability()
-
-    # Check for denominator
-    if L_theta_hat < 1e-16:
-        return np.inf
-    
-    # Debug
-    # assert(theta.nbrHardEvidence() == len(bn.nodes()))
-    # assert(theta_hat.nbrHardEvidence() == len(bn.nodes()))
-
-    return math.log(L_theta / L_theta_hat)
-
-# Parse the credal network (TODO: improve)
-def parse_credal_net(cn_str: str):
-    credal_dict = defaultdict(lambda: defaultdict(list))
-    current_var = None
-
-    lines = cn_str.strip().split('\n')
-
-    for line in lines:
-        line = line.strip()
-
-        # Identificazione della variabile
-        var_match = re.match(r'^([A-Za-z0-9_]+):Range\(\[.*\]\)', line)
-        if var_match:
-            current_var = var_match.group(1)
-            continue
-
-        if current_var is None or not line:
-            continue
-
-        # Identificazione di una CPT con intestazione <condizioni>
-        cpt_match = re.match(r'^<([^>]*)>\s*:\s*(.*)', line)
-        if cpt_match:
-            condition = f"<{cpt_match.group(1).strip()}>"
-            raw_cpt = cpt_match.group(2)
-
-            # Estrarre tutte le liste interne: [[x,x,x], [x,x,x], ...]
-            vectors = re.findall(r'\[\s*([^\[\]]+?)\s*\]', raw_cpt)
-            for vec in vectors:
-                prob_list = [float(x.strip()) for x in vec.split(',')]
-                credal_dict[current_var][condition].append(prob_list)
-
-    return credal_dict
-
-# Compute CN simplex or a random subset of it
-def get_simplex(cn, n: int = None) -> list:
-
-    # Store the CN in form of string
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        print(cn)
-    cn_text = buffer.getvalue()
-
-    # Parse CN
-    parsed = parse_credal_net(cn_text)
-
-    # Get baseline DAG and init simplex
-    dag = gum.BayesNet(cn.current_bn())
-    bns = []
-
-    # Compute slots and store variables indexes
-    slots = []
-    for var in parsed:
-        for cond, vectors in parsed[var].items():
-            slots.append((var, cond, vectors))
-    var_idx = {var:[idx for idx, elem in enumerate(slots) if elem[0] == var] for var in bn.names()}
-
-    # If 'n' is provided...
-    if bool(n):
-        # Get 'n' random combinations of CPTs
-        combinations = [random_product(*[vecs for _, _, vecs in slots]) for _ in range(n)]
-        n_combs = len(combinations)
-        assert(n_combs == n)
-    else:
-        # Get all combinations of CPTs
-        combinations = list(product(*[vecs for _, _, vecs in slots]))
-        n_combs = len(combinations)
-
-    # For each combination...
-    for combo in combinations:
-
-        # Init BN and ...
-        bn_tmp = gum.BayesNet(dag)
-
-        # Fill its CPTs
-        for var in bn.names():
-            array = np.array([(combo[idx]) for idx in var_idx.get(var)]).flatten()
-            bn_tmp.cpt(var).fillWith(array)
-
-        bns.append(bn_tmp)
-    
-    # Debug
-    # assert(n_combs == len(bns))
-
-    return bns
-
-# Check simplex computation
-def are_all_bn_different(bn_list):
-
-    def serialize_bn(bn):
-        cpt_data = []
-        for var in bn.names():
-            cpt = bn.cpt(var)
-            flat = [f"{v:.8f}" for v in cpt.toarray().flatten()]
-            cpt_data.append(f"{var}:" + ",".join(flat))
-        return "|".join(cpt_data)
-
-    signatures = set()
-    for bn in bn_list:
-        sig = serialize_bn(bn)
-        signatures.add(sig)
-        
-    print(f"({len(signatures)}/{len(bn_list)} different BNs.)")
-
-    return
-
-#####################
-### MAIN
-#####################
 
 if __name__ == "__main__":
 
@@ -159,7 +32,7 @@ if __name__ == "__main__":
     gpop_ss = 10000                 # Sample size (general population)
     ratio = 10                      # Sample sizes ratio (i.e., pool : reference population = 1 : ratio)
     ess = 1                         # Equivalent sample size (ESS) for local IDM
-    n_bns = 50                      # Number of vertices BNs to extract from CN simplex
+    n_bns = 5                       # Number of vertices BNs to extract from CN simplex
     error = np.arange(0, 1, 0.05)   # Error (alpha) range
     # print("[OK]")
 
@@ -204,7 +77,7 @@ if __name__ == "__main__":
 
     ## Estimate CN by local IDM
     # print(f"Estimate CN from pool by local IDM with ESS={ess} ...", end=" ")
-    # Add counts of events to BN (from pool)
+    # Add counts of events to BN from pop
     for node in bn.names():
         var = bn.variable(node)
         parents = bn.parents(node)
@@ -227,11 +100,11 @@ if __name__ == "__main__":
     cn.idmLearning(ess)
     # print("[OK]")
 
-    # Extract random subset of simplex
-    print(f"Extract {n_bns} BN vertices from credal set ...", end=" ")
-    bns_simplex = get_simplex(cn, n_bns)
+    # Extract random subset within simplex
+    print(f"Extract {n_bns} BNs from credal set ...", end=" ")
+    bns_sample = get_simplex_inner(cn, n_bns)
     print("[OK]", end=" ")
-    are_all_bn_different(bns_simplex)
+    are_all_bn_different(bns_sample)
 
     ## MIA (theoretical)
     # print(f"Compute theoretical power ...", end=" ")
@@ -288,7 +161,7 @@ if __name__ == "__main__":
 
     ## MIA (CN)
     print(f"Compute CN power on {n_bns} BN vertices...")
-    for i, bn_vertex in enumerate(tqdm(bns_simplex, unit="item", dynamic_ncols=True)):
+    for i, bn_vertex in enumerate(tqdm(bns_sample, unit="item", dynamic_ncols=True)):
 
         # Estimate the distribution of LLR(x) from rpop (i..e under H_0)
         bn_vertex_ie = gum.LazyPropagation(bn_vertex)
