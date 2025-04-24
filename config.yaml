@@ -1,21 +1,733 @@
-invar:                              # Invariant configs
-  n_ds: 3                           # Number of data sample for each BN
-  n_modmax: 2                       # Max number of modalities per node
-  gpop_ss: 10000                    # Sample size (general population)
-  rpop_ss: 5000                     # Sample size (reference population)
-  pool_ss: 1000                     # Sample size (pool)
-  error: np.arange(0, 1, 0.05)      # Error (alpha) range
-  n_bns: 5                          # Number of BNs to extract from credal set  
+# Last update: 2025-04-24 19:38
+invar:
+  n_ds: 10
+  n_modmax: 2
+  gpop_ss: 10000
+  rpop_ss: 5000
+  pool_ss: 1000
+  error: np.arange(0, 1, 0.05)
+  n_bns: 20
+    
+var:
+  idm:
+    - n_nodes: 5
+      edge_ratio: 1
+      ess: 1
+      meta: exp_1
 
-var:                                # Variable configs
-  - n_nodes: 5                      # Number of nodes (note: at 100 nodes, 0 power for gpop_ss = [1e4, 3e4].)
-    n_arcs : 7                      # Number of edges
-    ess: 1                          # Equivalent sample size (ESS) for local IDM
-    eps: 0.001                      # Contamination for CN
-    meta: exp_1                     # Number of experiment
+    - n_nodes: 5
+      edge_ratio: 1
+      ess: 2
+      meta: exp_2
 
-  - n_nodes: 7
-    n_arcs : 10
-    ess: 1
-    eps: 0.001
-    meta: exp_2
+    - n_nodes: 5
+      edge_ratio: 1.2
+      ess: 1
+      meta: exp_3
+
+    - n_nodes: 5
+      edge_ratio: 1.2
+      ess: 2
+      meta: exp_4
+
+    - n_nodes: 5
+      edge_ratio: 1.5
+      ess: 1
+      meta: exp_5
+
+    - n_nodes: 5
+      edge_ratio: 1.5
+      ess: 2
+      meta: exp_6
+
+    - n_nodes: 5
+      edge_ratio: 2
+      ess: 1
+      meta: exp_7
+
+    - n_nodes: 5
+      edge_ratio: 2
+      ess: 2
+      meta: exp_8
+
+    - n_nodes: 10
+      edge_ratio: 1
+      ess: 1
+      meta: exp_9
+
+    - n_nodes: 10
+      edge_ratio: 1
+      ess: 2
+      meta: exp_10
+
+    - n_nodes: 10
+      edge_ratio: 1.2
+      ess: 1
+      meta: exp_11
+
+    - n_nodes: 10
+      edge_ratio: 1.2
+      ess: 2
+      meta: exp_12
+
+    - n_nodes: 10
+      edge_ratio: 1.5
+      ess: 1
+      meta: exp_13
+
+    - n_nodes: 10
+      edge_ratio: 1.5
+      ess: 2
+      meta: exp_14
+
+    - n_nodes: 10
+      edge_ratio: 2
+      ess: 1
+      meta: exp_15
+
+    - n_nodes: 10
+      edge_ratio: 2
+      ess: 2
+      meta: exp_16
+
+    - n_nodes: 20
+      edge_ratio: 1
+      ess: 1
+      meta: exp_17
+
+    - n_nodes: 20
+      edge_ratio: 1
+      ess: 2
+      meta: exp_18
+
+    - n_nodes: 20
+      edge_ratio: 1.2
+      ess: 1
+      meta: exp_19
+
+    - n_nodes: 20
+      edge_ratio: 1.2
+      ess: 2
+      meta: exp_20
+
+    - n_nodes: 20
+      edge_ratio: 1.5
+      ess: 1
+      meta: exp_21
+
+    - n_nodes: 20
+      edge_ratio: 1.5
+      ess: 2
+      meta: exp_22
+
+    - n_nodes: 20
+      edge_ratio: 2
+      ess: 1
+      meta: exp_23
+
+    - n_nodes: 20
+      edge_ratio: 2
+      ess: 2
+      meta: exp_24
+
+    - n_nodes: 50
+      edge_ratio: 1
+      ess: 1
+      meta: exp_25
+
+    - n_nodes: 50
+      edge_ratio: 1
+      ess: 2
+      meta: exp_26
+
+    - n_nodes: 50
+      edge_ratio: 1.2
+      ess: 1
+      meta: exp_27
+
+    - n_nodes: 50
+      edge_ratio: 1.2
+      ess: 2
+      meta: exp_28
+
+    - n_nodes: 50
+      edge_ratio: 1.5
+      ess: 1
+      meta: exp_29
+
+    - n_nodes: 50
+      edge_ratio: 1.5
+      ess: 2
+      meta: exp_30
+
+    - n_nodes: 50
+      edge_ratio: 2
+      ess: 1
+      meta: exp_31
+
+    - n_nodes: 50
+      edge_ratio: 2
+      ess: 2
+      meta: exp_32
+
+    - n_nodes: 70
+      edge_ratio: 1
+      ess: 1
+      meta: exp_33
+
+    - n_nodes: 70
+      edge_ratio: 1
+      ess: 2
+      meta: exp_34
+
+    - n_nodes: 70
+      edge_ratio: 1.2
+      ess: 1
+      meta: exp_35
+
+    - n_nodes: 70
+      edge_ratio: 1.2
+      ess: 2
+      meta: exp_36
+
+    - n_nodes: 70
+      edge_ratio: 1.5
+      ess: 1
+      meta: exp_37
+
+    - n_nodes: 70
+      edge_ratio: 1.5
+      ess: 2
+      meta: exp_38
+
+    - n_nodes: 70
+      edge_ratio: 2
+      ess: 1
+      meta: exp_39
+
+    - n_nodes: 70
+      edge_ratio: 2
+      ess: 2
+      meta: exp_40
+
+    - n_nodes: 100
+      edge_ratio: 1
+      ess: 1
+      meta: exp_41
+
+    - n_nodes: 100
+      edge_ratio: 1
+      ess: 2
+      meta: exp_42
+
+    - n_nodes: 100
+      edge_ratio: 1.2
+      ess: 1
+      meta: exp_43
+
+    - n_nodes: 100
+      edge_ratio: 1.2
+      ess: 2
+      meta: exp_44
+
+    - n_nodes: 100
+      edge_ratio: 1.5
+      ess: 1
+      meta: exp_45
+
+    - n_nodes: 100
+      edge_ratio: 1.5
+      ess: 2
+      meta: exp_46
+
+    - n_nodes: 100
+      edge_ratio: 2
+      ess: 1
+      meta: exp_47
+
+    - n_nodes: 100
+      edge_ratio: 2
+      ess: 2
+      meta: exp_48
+
+  cont:
+    - n_nodes: 5
+      edge_ratio: 1
+      eps: 0.001
+      meta: exp_1
+
+    - n_nodes: 5
+      edge_ratio: 1
+      eps: 0.01
+      meta: exp_2
+
+    - n_nodes: 5
+      edge_ratio: 1
+      eps: 0.05
+      meta: exp_3
+
+    - n_nodes: 5
+      edge_ratio: 1
+      eps: 0.1
+      meta: exp_4
+
+    - n_nodes: 5
+      edge_ratio: 1.2
+      eps: 0.001
+      meta: exp_5
+
+    - n_nodes: 5
+      edge_ratio: 1.2
+      eps: 0.01
+      meta: exp_6
+
+    - n_nodes: 5
+      edge_ratio: 1.2
+      eps: 0.05
+      meta: exp_7
+
+    - n_nodes: 5
+      edge_ratio: 1.2
+      eps: 0.1
+      meta: exp_8
+
+    - n_nodes: 5
+      edge_ratio: 1.5
+      eps: 0.001
+      meta: exp_9
+
+    - n_nodes: 5
+      edge_ratio: 1.5
+      eps: 0.01
+      meta: exp_10
+
+    - n_nodes: 5
+      edge_ratio: 1.5
+      eps: 0.05
+      meta: exp_11
+
+    - n_nodes: 5
+      edge_ratio: 1.5
+      eps: 0.1
+      meta: exp_12
+
+    - n_nodes: 5
+      edge_ratio: 2
+      eps: 0.001
+      meta: exp_13
+
+    - n_nodes: 5
+      edge_ratio: 2
+      eps: 0.01
+      meta: exp_14
+
+    - n_nodes: 5
+      edge_ratio: 2
+      eps: 0.05
+      meta: exp_15
+
+    - n_nodes: 5
+      edge_ratio: 2
+      eps: 0.1
+      meta: exp_16
+
+    - n_nodes: 10
+      edge_ratio: 1
+      eps: 0.001
+      meta: exp_17
+
+    - n_nodes: 10
+      edge_ratio: 1
+      eps: 0.01
+      meta: exp_18
+
+    - n_nodes: 10
+      edge_ratio: 1
+      eps: 0.05
+      meta: exp_19
+
+    - n_nodes: 10
+      edge_ratio: 1
+      eps: 0.1
+      meta: exp_20
+
+    - n_nodes: 10
+      edge_ratio: 1.2
+      eps: 0.001
+      meta: exp_21
+
+    - n_nodes: 10
+      edge_ratio: 1.2
+      eps: 0.01
+      meta: exp_22
+
+    - n_nodes: 10
+      edge_ratio: 1.2
+      eps: 0.05
+      meta: exp_23
+
+    - n_nodes: 10
+      edge_ratio: 1.2
+      eps: 0.1
+      meta: exp_24
+
+    - n_nodes: 10
+      edge_ratio: 1.5
+      eps: 0.001
+      meta: exp_25
+
+    - n_nodes: 10
+      edge_ratio: 1.5
+      eps: 0.01
+      meta: exp_26
+
+    - n_nodes: 10
+      edge_ratio: 1.5
+      eps: 0.05
+      meta: exp_27
+
+    - n_nodes: 10
+      edge_ratio: 1.5
+      eps: 0.1
+      meta: exp_28
+
+    - n_nodes: 10
+      edge_ratio: 2
+      eps: 0.001
+      meta: exp_29
+
+    - n_nodes: 10
+      edge_ratio: 2
+      eps: 0.01
+      meta: exp_30
+
+    - n_nodes: 10
+      edge_ratio: 2
+      eps: 0.05
+      meta: exp_31
+
+    - n_nodes: 10
+      edge_ratio: 2
+      eps: 0.1
+      meta: exp_32
+
+    - n_nodes: 20
+      edge_ratio: 1
+      eps: 0.001
+      meta: exp_33
+
+    - n_nodes: 20
+      edge_ratio: 1
+      eps: 0.01
+      meta: exp_34
+
+    - n_nodes: 20
+      edge_ratio: 1
+      eps: 0.05
+      meta: exp_35
+
+    - n_nodes: 20
+      edge_ratio: 1
+      eps: 0.1
+      meta: exp_36
+
+    - n_nodes: 20
+      edge_ratio: 1.2
+      eps: 0.001
+      meta: exp_37
+
+    - n_nodes: 20
+      edge_ratio: 1.2
+      eps: 0.01
+      meta: exp_38
+
+    - n_nodes: 20
+      edge_ratio: 1.2
+      eps: 0.05
+      meta: exp_39
+
+    - n_nodes: 20
+      edge_ratio: 1.2
+      eps: 0.1
+      meta: exp_40
+
+    - n_nodes: 20
+      edge_ratio: 1.5
+      eps: 0.001
+      meta: exp_41
+
+    - n_nodes: 20
+      edge_ratio: 1.5
+      eps: 0.01
+      meta: exp_42
+
+    - n_nodes: 20
+      edge_ratio: 1.5
+      eps: 0.05
+      meta: exp_43
+
+    - n_nodes: 20
+      edge_ratio: 1.5
+      eps: 0.1
+      meta: exp_44
+
+    - n_nodes: 20
+      edge_ratio: 2
+      eps: 0.001
+      meta: exp_45
+
+    - n_nodes: 20
+      edge_ratio: 2
+      eps: 0.01
+      meta: exp_46
+
+    - n_nodes: 20
+      edge_ratio: 2
+      eps: 0.05
+      meta: exp_47
+
+    - n_nodes: 20
+      edge_ratio: 2
+      eps: 0.1
+      meta: exp_48
+
+    - n_nodes: 50
+      edge_ratio: 1
+      eps: 0.001
+      meta: exp_49
+
+    - n_nodes: 50
+      edge_ratio: 1
+      eps: 0.01
+      meta: exp_50
+
+    - n_nodes: 50
+      edge_ratio: 1
+      eps: 0.05
+      meta: exp_51
+
+    - n_nodes: 50
+      edge_ratio: 1
+      eps: 0.1
+      meta: exp_52
+
+    - n_nodes: 50
+      edge_ratio: 1.2
+      eps: 0.001
+      meta: exp_53
+
+    - n_nodes: 50
+      edge_ratio: 1.2
+      eps: 0.01
+      meta: exp_54
+
+    - n_nodes: 50
+      edge_ratio: 1.2
+      eps: 0.05
+      meta: exp_55
+
+    - n_nodes: 50
+      edge_ratio: 1.2
+      eps: 0.1
+      meta: exp_56
+
+    - n_nodes: 50
+      edge_ratio: 1.5
+      eps: 0.001
+      meta: exp_57
+
+    - n_nodes: 50
+      edge_ratio: 1.5
+      eps: 0.01
+      meta: exp_58
+
+    - n_nodes: 50
+      edge_ratio: 1.5
+      eps: 0.05
+      meta: exp_59
+
+    - n_nodes: 50
+      edge_ratio: 1.5
+      eps: 0.1
+      meta: exp_60
+
+    - n_nodes: 50
+      edge_ratio: 2
+      eps: 0.001
+      meta: exp_61
+
+    - n_nodes: 50
+      edge_ratio: 2
+      eps: 0.01
+      meta: exp_62
+
+    - n_nodes: 50
+      edge_ratio: 2
+      eps: 0.05
+      meta: exp_63
+
+    - n_nodes: 50
+      edge_ratio: 2
+      eps: 0.1
+      meta: exp_64
+
+    - n_nodes: 70
+      edge_ratio: 1
+      eps: 0.001
+      meta: exp_65
+
+    - n_nodes: 70
+      edge_ratio: 1
+      eps: 0.01
+      meta: exp_66
+
+    - n_nodes: 70
+      edge_ratio: 1
+      eps: 0.05
+      meta: exp_67
+
+    - n_nodes: 70
+      edge_ratio: 1
+      eps: 0.1
+      meta: exp_68
+
+    - n_nodes: 70
+      edge_ratio: 1.2
+      eps: 0.001
+      meta: exp_69
+
+    - n_nodes: 70
+      edge_ratio: 1.2
+      eps: 0.01
+      meta: exp_70
+
+    - n_nodes: 70
+      edge_ratio: 1.2
+      eps: 0.05
+      meta: exp_71
+
+    - n_nodes: 70
+      edge_ratio: 1.2
+      eps: 0.1
+      meta: exp_72
+
+    - n_nodes: 70
+      edge_ratio: 1.5
+      eps: 0.001
+      meta: exp_73
+
+    - n_nodes: 70
+      edge_ratio: 1.5
+      eps: 0.01
+      meta: exp_74
+
+    - n_nodes: 70
+      edge_ratio: 1.5
+      eps: 0.05
+      meta: exp_75
+
+    - n_nodes: 70
+      edge_ratio: 1.5
+      eps: 0.1
+      meta: exp_76
+
+    - n_nodes: 70
+      edge_ratio: 2
+      eps: 0.001
+      meta: exp_77
+
+    - n_nodes: 70
+      edge_ratio: 2
+      eps: 0.01
+      meta: exp_78
+
+    - n_nodes: 70
+      edge_ratio: 2
+      eps: 0.05
+      meta: exp_79
+
+    - n_nodes: 70
+      edge_ratio: 2
+      eps: 0.1
+      meta: exp_80
+
+    - n_nodes: 100
+      edge_ratio: 1
+      eps: 0.001
+      meta: exp_81
+
+    - n_nodes: 100
+      edge_ratio: 1
+      eps: 0.01
+      meta: exp_82
+
+    - n_nodes: 100
+      edge_ratio: 1
+      eps: 0.05
+      meta: exp_83
+
+    - n_nodes: 100
+      edge_ratio: 1
+      eps: 0.1
+      meta: exp_84
+
+    - n_nodes: 100
+      edge_ratio: 1.2
+      eps: 0.001
+      meta: exp_85
+
+    - n_nodes: 100
+      edge_ratio: 1.2
+      eps: 0.01
+      meta: exp_86
+
+    - n_nodes: 100
+      edge_ratio: 1.2
+      eps: 0.05
+      meta: exp_87
+
+    - n_nodes: 100
+      edge_ratio: 1.2
+      eps: 0.1
+      meta: exp_88
+
+    - n_nodes: 100
+      edge_ratio: 1.5
+      eps: 0.001
+      meta: exp_89
+
+    - n_nodes: 100
+      edge_ratio: 1.5
+      eps: 0.01
+      meta: exp_90
+
+    - n_nodes: 100
+      edge_ratio: 1.5
+      eps: 0.05
+      meta: exp_91
+
+    - n_nodes: 100
+      edge_ratio: 1.5
+      eps: 0.1
+      meta: exp_92
+
+    - n_nodes: 100
+      edge_ratio: 2
+      eps: 0.001
+      meta: exp_93
+
+    - n_nodes: 100
+      edge_ratio: 2
+      eps: 0.01
+      meta: exp_94
+
+    - n_nodes: 100
+      edge_ratio: 2
+      eps: 0.05
+      meta: exp_95
+
+    - n_nodes: 100
+      edge_ratio: 2
+      eps: 0.1
+      meta: exp_96
+

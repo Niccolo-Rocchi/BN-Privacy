@@ -32,11 +32,11 @@ if __name__ == "__main__":
     error = eval(config["invar"]["error"])
     n_bns = config["invar"]["n_bns"]
 
-    for conf in config["var"]:
+    for conf in config["var"]["idm"]:
         print(f"\n----- Running: {conf['meta']} -----")
 
         n_nodes = conf["n_nodes"]
-        n_arcs = conf["n_arcs"]
+        edge_ratio = conf["edge_ratio"]
         ess = conf["ess"]
         
         # Init parallelization
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
         # Generate ground-truth BN
         bn_gen = gum.BNGenerator()
-        bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=n_arcs, n_modmax=n_modmax)
+        bn = bn_gen.generate(n_nodes=n_nodes, n_arcs=int(n_nodes * edge_ratio), n_modmax=n_modmax)
 
         # Compute theoretical bound
         compl = bn.dim()
