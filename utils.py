@@ -206,3 +206,26 @@ def are_all_bn_different(bn_list):
     print(f"({len(signatures)}/{len(bn_list)} different BNs.)")
 
     return
+
+# Add counts of events to a bn (TODO: improve)
+def add_counts(bn, data):
+
+    for node in bn.names():
+        var = bn.variable(node)
+        parents = bn.parents(node)
+        parent_names = [bn.variable(p).name() for p in parents]
+
+        shape = [bn.variable(p).domainSize() for p in parents] + [var.domainSize()]
+        counts_array = np.zeros(shape, dtype=float)  # float, not int!
+
+        for _, row in data.iterrows():
+            try:
+                key = tuple([int(row[p]) for p in parent_names] + [int(row[node])])
+                counts_array[key] += 1.0
+            except KeyError:
+                continue
+
+        bn.cpt(node).fillWith(counts_array.flatten().tolist())
+        
+    return
+            
