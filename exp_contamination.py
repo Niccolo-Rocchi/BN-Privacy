@@ -192,4 +192,4 @@ if __name__ == "__main__":
 
         # Compute average results and save them
         results[["power_BN", "CN_avg", "CN_max", "CN_min"]] /= n_ds
-        results.to_csv(f"./results/idm/{conf['meta']}-compl{compl}.csv", index=False)
+        results.to_csv(f"./results/cont/{conf['meta']}-compl{compl}.csv", index=False)

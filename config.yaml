@@ -1,11 +1,11 @@
 invar:                              # Invariant configs
-  n_ds: 2                           # Number of data sample for each BN
+  n_ds: 3                           # Number of data sample for each BN
   n_modmax: 2                       # Max number of modalities per node
   gpop_ss: 10000                    # Sample size (general population)
   rpop_ss: 5000                     # Sample size (reference population)
   pool_ss: 1000                     # Sample size (pool)
   error: np.arange(0, 1, 0.05)      # Error (alpha) range
-  n_bns: 3                          # Number of BNs to extract from credal set  
+  n_bns: 5                          # Number of BNs to extract from credal set  
 
 var:                                # Variable configs
   - n_nodes: 5                      # Number of nodes (note: at 100 nodes, 0 power for gpop_ss = [1e4, 3e4].)
@@ -14,8 +14,8 @@ var:                                # Variable configs
     eps: 0.001                      # Contamination for CN
     meta: exp_1                     # Number of experiment
 
-  - n_nodes: 50
-    n_arcs : 70
+  - n_nodes: 7
+    n_arcs : 10
     ess: 1
     eps: 0.001
     meta: exp_2
