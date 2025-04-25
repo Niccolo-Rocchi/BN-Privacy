@@ -5,22 +5,22 @@ def generate_config(file):
 
     # Define invar. hyperparameters
     invar = '''invar:
-  n_ds: 10
+  n_ds: 20
   n_modmax: 2
   gpop_ss: 10000
   rpop_ss: 5000
   pool_ss: 1000
   error: np.arange(0, 1, 0.05)
-  n_bns: 20
+  n_bns: 100
     '''
 
     t = "  "
 
     # Define var. hyperparamters
-    n_nodes = [5, 10, 20, 50, 70, 100]
-    edge_ratios = [1, 1.2, 1.5, 2]
+    n_nodes = [10, 20, 50, 100]
+    edge_ratios = [1, 2, 3]
     ess = [1, 2]
-    eps = [1e-3, 1e-2, 5e-2, 1e-1]
+    eps = [1e-3, 1e-2, 1e-1]
 
     # Print on file
     print("# Last update: " + datetime.now().strftime("%Y-%m-%d %H:%M"), file=file)
