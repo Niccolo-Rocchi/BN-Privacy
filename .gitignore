@@ -1,4 +1,5 @@
 venv/
+results/
 *.bif
 *.csv
 *.pyc
