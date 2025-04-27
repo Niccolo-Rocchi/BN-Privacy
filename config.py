@@ -5,13 +5,13 @@ def generate_config(file):
 
     # Define invar. hyperparameters
     invar = '''invar:
-  n_ds: 50
+  n_ds: 5
   n_modmax: 2
   gpop_ss: 10000
   rpop_ss: 5000
   pool_ss: 500
   error: np.arange(0, 1, 0.05)
-  n_bns: 1000
+  n_bns: 10
     '''
 
     t = "  "
@@ -35,6 +35,8 @@ def generate_config(file):
             print(f"{t*2}-", end=" ", file=file)
             print(f"n_nodes: {n}\n{t*3}edge_ratio: {r}\n{t*3}ess: {s}\n{t*3}meta: exp_{idx}\n", file=file)
             idx += 1
+        if n == 20:
+            break
 
     print("  cont:", file=file)
     idx = 1
@@ -43,6 +45,8 @@ def generate_config(file):
             print(f"{t*2}-", end=" ", file=file)
             print(f"n_nodes: {n}\n{t*3}edge_ratio: {r}\n{t*3}eps: {e}\n{t*3}meta: exp_{idx}\n", file=file)
             idx += 1
+        if n == 20:
+            break
 
 if __name__ == "__main__":
 

@@ -2,12 +2,9 @@ import math
 from pathlib import Path
 import warnings
 import traceback
-
 import numpy as np
 import pandas as pd
-from pandarallel import pandarallel
 from scipy.stats import norm
-from tqdm import tqdm
 import pyagrum as gum
 import yaml
 
@@ -56,7 +53,7 @@ def run_exp_idm(inv_configs, conf):
     data_gen.setDiscretizedLabelModeRandom()
     gpop = data_gen.to_pandas()
 
-    for ds in tqdm(range(n_ds), unit="item", desc="Data samples", dynamic_ncols=True):
+    for ds in range(n_ds):
         
         try:
 
@@ -133,7 +130,7 @@ def run_exp_idm(inv_configs, conf):
             # MIA (CN)
             best_sum = 0
             best_bn_idx = 0
-            for i, bn_s in enumerate(tqdm(bns_sample, desc="Credal samples", unit="item", dynamic_ncols=True, leave=False)):
+            for i, bn_s in enumerate(bns_sample):
 
                 # Estimate the distribution of LLR(x) from rpop (i..e under H_0)
                 bn_s_ie = gum.LazyPropagation(bn_s)
@@ -173,25 +170,21 @@ def run_exp_idm(inv_configs, conf):
             # Add ds results to final results
             results["power_BN"] += results_ds["power_BN"]
             results["power_CN"] += results_ds["power_CN"]
-            # results_ds.drop(["error", "power_BN"], axis=1, inplace=True)
-
-            # results["CN_avg"] += results_ds.mean(axis=1)
-            # results["CN_min"] += results_ds.min(axis=1)
-            # results["CN_max"] += results_ds.max(axis=1)
 
             # Debug
             # assert(results_ds.shape[1] == n_bns)
             # assert(results.shape[1] == 6)
+
         except:
+
             with open("./results/idm/log.txt", "a") as log: log.write(f"{conf['meta']}: error with sample {ds}.\n")
 
-                # Debug
-                # log.write(traceback.format_exc())
+            # Debug
+            # log.write(traceback.format_exc())
 
     # Compute average results and save them
     results[["power_BN", "power_CN"]] /= n_ds
     results.to_csv(f"./results/idm/{conf['meta']}-compl{compl}.csv", index=False)
-    with open("./results/idm/log.txt", "a") as log: log.write(f"{conf['meta']}: [OK]\n")
 
 
 def run_exp_cont(inv_configs, conf):
@@ -235,7 +228,7 @@ def run_exp_cont(inv_configs, conf):
     data_gen.setDiscretizedLabelModeRandom()
     gpop = data_gen.to_pandas()
 
-    for ds in tqdm(range(n_ds), unit="item", desc="Data samples", dynamic_ncols=True):
+    for ds in range(n_ds):
         
         try:
 
@@ -317,7 +310,7 @@ def run_exp_cont(inv_configs, conf):
             # MIA (CN)
             best_sum = 0
             best_bn_idx = 0
-            for i, bn_s in enumerate(tqdm(bns_sample, desc="Credal samples", unit="item", dynamic_ncols=True, leave=False)):
+            for i, bn_s in enumerate(bns_sample):
 
                 # Estimate the distribution of LLR(x) from rpop (i..e under H_0)
                 bn_s_ie = gum.LazyPropagation(bn_s)
@@ -357,22 +350,18 @@ def run_exp_cont(inv_configs, conf):
             # Add ds results to final results
             results["power_BN"] += results_ds["power_BN"]
             results["power_CN"] += results_ds["power_CN"]
-            # results_ds.drop(["error", "power_BN"], axis=1, inplace=True)
-
-            # results["CN_avg"] += results_ds.mean(axis=1)
-            # results["CN_min"] += results_ds.min(axis=1)
-            # results["CN_max"] += results_ds.max(axis=1)
 
             # Debug
             # assert(results_ds.shape[1] == n_bns)
             # assert(results.shape[1] == 6)
+
         except:
+
             with open("./results/cont/log.txt", "a") as log: log.write(f"{conf['meta']}: error with sample {ds}.\n")
 
-                # Debug
-                # log.write(traceback.format_exc())
+            # Debug
+            # log.write(traceback.format_exc())
 
     # Compute average results and save them
     results[["power_BN", "power_CN"]] /= n_ds
     results.to_csv(f"./results/cont/{conf['meta']}-compl{compl}.csv", index=False)
-    with open("./results/cont/log.txt", "a") as log: log.write(f"{conf['meta']}: [OK]\n")

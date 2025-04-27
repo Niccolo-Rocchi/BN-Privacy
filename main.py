@@ -2,6 +2,11 @@
 import yaml
 from run import *
 from pathlib import Path
+import multiprocessing
+from joblib import Parallel, delayed
+from tqdm import tqdm
+
+num_cores = multiprocessing.cpu_count()
 
 # Main
 if __name__ == "__main__":
@@ -17,14 +22,8 @@ if __name__ == "__main__":
     results_path = Path("./results/cont")
     results_path.mkdir(parents=True, exist_ok=True)
 
-    # For each 'idm' configuration ...
-    for conf in var_configs["idm"]:
+    # IDM experiments (parallel)
+    Parallel(n_jobs=num_cores)(delayed(run_exp_idm)(inv_configs, conf) for conf in var_configs["idm"])
 
-        # Run experiment
-        run_exp_idm(inv_configs, conf)
-
-    # For each 'cont' configuration ...
-    for conf in var_configs["cont"]:
-
-        # Run experiment
-        run_exp_cont(inv_configs, conf)
+    # Eps-cont. experiments (parallel)
+    Parallel(n_jobs=num_cores)(delayed(run_exp_cont)(inv_configs, conf) for conf in var_configs["cont"])

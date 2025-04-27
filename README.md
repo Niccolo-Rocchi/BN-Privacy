@@ -2,12 +2,12 @@
 
 ## With Docker
 1. Build image: `docker build . -t ecai2025`
-2. Run a script with: `docker run -d --rm -v ecai:/workspace/results ecai2025 python <script_name>.py`
+2. Run with: `docker run -d --rm -v ecai:/workspace/results ecai2025 python main.py`
 3. Results available at `/var/lib/docker/volumes/ecai/_data/*`
 
 ## Without Docker
-1. Run `python config.y`
-2. Run a script with `python <script_name>.py`
+1. Run `python config.py`
+2. Run with `python main.py`
 3. Results available at `./results/*`
 
 ## How to read the `config.yaml` file
