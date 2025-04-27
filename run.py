@@ -115,10 +115,10 @@ def run_exp_idm(inv_configs, conf):
             for e in error:
 
                 # Compute threshold
-                t = np.quantile(L_im, e).item()
+                t = np.quantile(L_im, 1-e).item()
 
                 # LLR test. Reject H_0? True => x in pool; False => x in rpop.
-                y_pred = llr_gpop < t
+                y_pred = llr_gpop > t
 
                 # Compute and store power (tpr)
                 tpr = sum(gpop["in-pool"] & y_pred) / tp
@@ -132,9 +132,9 @@ def run_exp_idm(inv_configs, conf):
             best_bn_idx = 0
             for i, bn_s in enumerate(bns_sample):
 
-                # Estimate the distribution of LLR(x) from rpop (i..e under H_0)
+                # Estimate the likelihood of rpop
                 bn_s_ie = gum.LazyPropagation(bn_s)
-                L_im_s = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_s_ie), axis=1).dropna()
+                L_im_s = rpop.apply(lambda x: LL(x.to_dict(), bn_s_ie), axis=1).dropna()
 
                 L_im_s_sum = np.sum(L_im_s)
                 if L_im_s_sum > best_sum: 
@@ -155,10 +155,10 @@ def run_exp_idm(inv_configs, conf):
             for e in error:
 
                 # Compute threshold
-                t = np.quantile(L_im_best, e).item()
+                t = np.quantile(L_im_best, 1-e).item()
 
                 # LLR test. Reject H_0? True => x in pool; False => x in rpop.
-                y_pred_s = llr_gpop_s < t
+                y_pred_s = llr_gpop_s > t
                 
                 # Compute and store power (tpr)
                 tpr = sum(gpop["in-pool"] & y_pred_s) / tp
@@ -295,10 +295,10 @@ def run_exp_cont(inv_configs, conf):
             for e in error:
 
                 # Compute threshold
-                t = np.quantile(L_im, e).item()
+                t = np.quantile(L_im, 1-e).item()
 
                 # LLR test. Reject H_0? True => x in pool; False => x in rpop.
-                y_pred = llr_gpop < t
+                y_pred = llr_gpop > t
 
                 # Compute and store power (tpr)
                 tpr = sum(gpop["in-pool"] & y_pred) / tp
@@ -312,9 +312,9 @@ def run_exp_cont(inv_configs, conf):
             best_bn_idx = 0
             for i, bn_s in enumerate(bns_sample):
 
-                # Estimate the distribution of LLR(x) from rpop (i..e under H_0)
+                # Estimate the likelihood of rpop
                 bn_s_ie = gum.LazyPropagation(bn_s)
-                L_im_s = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_s_ie), axis=1).dropna()
+                L_im_s = rpop.apply(lambda x: LL(x.to_dict(), bn_s_ie), axis=1).dropna()
 
                 L_im_s_sum = np.sum(L_im_s)
                 if L_im_s_sum > best_sum: 
@@ -335,10 +335,10 @@ def run_exp_cont(inv_configs, conf):
             for e in error:
 
                 # Compute threshold
-                t = np.quantile(L_im_best, e).item()
+                t = np.quantile(L_im_best, 1-e).item()
 
                 # LLR test. Reject H_0? True => x in pool; False => x in rpop.
-                y_pred_s = llr_gpop_s < t
+                y_pred_s = llr_gpop_s > t
                 
                 # Compute and store power (tpr)
                 tpr = sum(gpop["in-pool"] & y_pred_s) / tp

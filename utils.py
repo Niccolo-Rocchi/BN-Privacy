@@ -11,26 +11,25 @@ from contextlib import redirect_stdout
 from itertools import product
 from more_itertools import random_product
 
-# Log-likelihood ratio (LLR) function
-def LLR(x: dict, theta, theta_hat):
+# Log-likelihood function
+def LL(x:dict, theta):
 
     # Erase all evidences and apply addEvidence(key,value) for every pairs in x
     theta.setEvidence(x)
-    theta_hat.setEvidence(x)
 
-    # Compute P(x | BN)
-    L_theta = theta.evidenceProbability()
-    L_theta_hat = theta_hat.evidenceProbability()
+    # Compute P(x | theta)
+    ll = theta.evidenceProbability()
 
-    # Check for denominator
-    if L_theta_hat < 1e-16:
-        return np.inf
-    
-    # Debug
-    # assert(theta.nbrHardEvidence() == len(bn.nodes()))
-    # assert(theta_hat.nbrHardEvidence() == len(bn.nodes()))
+    return np.log(ll)
 
-    return math.log(L_theta / L_theta_hat)
+# Log-likelihood ratio (LLR) function
+def LLR(x: dict, theta, theta_hat):
+
+    # Compute log-likelihoods
+    ll_theta = LL(x, theta)
+    ll_theta_hat = LL(x, theta_hat)
+
+    return ll_theta_hat - ll_theta
 
 # Parse the credal network (TODO: improve)
 def parse_credal_net(cn_str: str):
