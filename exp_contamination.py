@@ -62,10 +62,14 @@ if __name__ == "__main__":
                 {"error": error,
                 "power_bound": beta,
                 "power_BN": np.zeros(len(error)),
-                "CN_avg": np.zeros(len(error)),
-                "CN_max": np.zeros(len(error)),
-                "CN_min": np.zeros(len(error))}
+                "power_CN": np.zeros(len(error))}
             )
+
+            # Sample gpop
+            data_gen = gum.BNDatabaseGenerator(bn)
+            data_gen.drawSamples(gpop_ss)
+            data_gen.setDiscretizedLabelModeRandom()
+            gpop = data_gen.to_pandas()
 
             for ds in tqdm(range(n_ds), unit="item", desc="Data samples", dynamic_ncols=True):
                 try:
@@ -73,12 +77,8 @@ if __name__ == "__main__":
                     # Init results of specific data sample
                     results_ds = pd.DataFrame({"error": error})
 
-                    # Sample data
-                    data_gen = gum.BNDatabaseGenerator(bn)
-                    data_gen.drawSamples(gpop_ss)
-                    data_gen.setDiscretizedLabelModeRandom()
-                    gpop = data_gen.to_pandas()
-
+                    # Sample pool and rpop
+                    gpop = gpop[[*bn.names()]]
                     pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
                     pool = gpop.iloc[pool_idx]
                     rpop_idx = np.random.choice(range(gpop_ss), size=rpop_ss, replace=False)
@@ -103,20 +103,20 @@ if __name__ == "__main__":
                     theta_hat_learner.useSmoothingPrior(1e-5)
                     bn_theta_hat = theta_hat_learner.learnParameters(bn.dag())
 
-                    # Estimate CN by contamination
+                    # Estimate CN by eps-contamination
                     bn_min=gum.BayesNet(bn)
                     bn_max=gum.BayesNet(bn)
                     for n in bn.nodes():
-                        x=eps*min(bn.cpt(n).min(),1-bn.cpt(n).max())
-                        bn_min.cpt(n).translate(-x)
-                        bn_max.cpt(n).translate(x)
+                        x = (1-eps)*bn_min.cpt(n)
+                        bn_min.cpt(n).fillWith(x)
+                        bn_max.cpt(n).fillWith(x+eps)
 
                     # Create CN
                     cn = gum.CredalNet(bn_min,bn_max)
                     cn.intervalToCredal()
 
-                    # Extract random subset of simplex vertices
-                    bns_sample = get_simplex(cn, n_bns)
+                    # Extract random subset within simplex
+                    bns_sample = get_simplex_inner(cn, n_bns)
 
                     # Debug
                     # are_all_bn_different(bns_sample)
@@ -150,44 +150,53 @@ if __name__ == "__main__":
                     results_ds["power_BN"] = power_bn
 
                     # MIA (CN)
-                    for i, bn_vertex in enumerate(tqdm(bns_sample, desc="Credal samples", unit="item", dynamic_ncols=True, leave=False)):
+                    best_sum = 0
+                    best_bn_idx = 0
+                    for i, bn_s in enumerate(tqdm(bns_sample, desc="Credal samples", unit="item", dynamic_ncols=True, leave=False)):
 
                         # Estimate the distribution of LLR(x) from rpop (i..e under H_0)
-                        bn_vertex_ie = gum.LazyPropagation(bn_vertex)
-                        L_im_vertex = rpop.parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_vertex_ie), axis=1).dropna().sort_values()
+                        bn_s_ie = gum.LazyPropagation(bn_s)
+                        L_im_s = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_s_ie), axis=1).dropna()
 
-                        # Compute LLR(x) on general population
-                        llr_gpop_vertex = gpop[[*bn.names()]].parallel_apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_vertex_ie), axis=1)
+                        L_im_s_sum = np.sum(L_im_s)
+                        if L_im_s_sum > best_sum: 
+                            best_sum = L_im_s_sum
+                            best_bn_idx = i
 
-                        # Init the power vector (BN vertex)
-                        power_bn_vertex = []
+                    # Get best BN inside simplex
+                    best_bn_s_ie = gum.LazyPropagation(bns_sample[best_bn_idx])
+                    L_im_best = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, best_bn_s_ie), axis=1).dropna()
 
-                        # For each error ...
-                        for e in error:
+                    # Compute LLR(x) on general population
+                    llr_gpop_s = gpop[[*bn.names()]].apply(lambda x: LLR(x.to_dict(), bn_theta_ie, best_bn_s_ie), axis=1)
 
-                            # Compute threshold
-                            t = np.quantile(L_im_vertex, e).item()
+                    # Init the power vector (BN vertex)
+                    power_bn_s = []
 
-                            # LLR test. Reject H_0? True => x in pool; False => x in rpop.
-                            y_pred_vertex = llr_gpop_vertex < t
-                            
-                            # Compute and store power (tpr)
-                            tpr = sum(gpop["in-pool"] & y_pred_vertex) / tp
-                            power_bn_vertex = power_bn_vertex + [tpr]
+                    # For each error ...
+                    for e in error:
+
+                        # Compute threshold
+                        t = np.quantile(L_im_best, e).item()
+
+                        # LLR test. Reject H_0? True => x in pool; False => x in rpop.
+                        y_pred_s = llr_gpop_s < t
                         
-                        # Store CN results for this data sample
-                        results_ds[f"power_BN_v_{i}"] = power_bn_vertex
-
-                    # Debug
-                    # assert(results_ds.shape[1] == n_bns + 2)
+                        # Compute and store power (tpr)
+                        tpr = sum(gpop["in-pool"] & y_pred_s) / tp
+                        power_bn_s = power_bn_s + [tpr]
+                    
+                    # Store CN results for this data sample
+                    results_ds["power_CN"] = power_bn_s
 
                     # Add ds results to final results
                     results["power_BN"] += results_ds["power_BN"]
-                    results_ds.drop(["error", "power_BN"], axis=1, inplace=True)
+                    results["power_CN"] += results_ds["power_CN"]
+                    # results_ds.drop(["error", "power_BN"], axis=1, inplace=True)
 
-                    results["CN_avg"] += results_ds.mean(axis=1)
-                    results["CN_min"] += results_ds.min(axis=1)
-                    results["CN_max"] += results_ds.max(axis=1)
+                    # results["CN_avg"] += results_ds.mean(axis=1)
+                    # results["CN_min"] += results_ds.min(axis=1)
+                    # results["CN_max"] += results_ds.max(axis=1)
 
                     # Debug
                     # assert(results_ds.shape[1] == n_bns)
@@ -200,7 +209,7 @@ if __name__ == "__main__":
                         # log_file.write(traceback.format_exc())
 
             # Compute average results and save them
-            results[["power_BN", "CN_avg", "CN_max", "CN_min"]] /= n_ds
+            results[["power_BN", "power_CN"]] /= n_ds
             results.to_csv(f"./results/cont/{conf['meta']}-compl{compl}.csv", index=False)
 
         except:
