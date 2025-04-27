@@ -35,8 +35,6 @@ def generate_config(file):
             print(f"{t*2}-", end=" ", file=file)
             print(f"n_nodes: {n}\n{t*3}edge_ratio: {r}\n{t*3}ess: {s}\n{t*3}meta: exp_{idx}\n", file=file)
             idx += 1
-            break
-        break
 
     print("  cont:", file=file)
     idx = 1
@@ -45,8 +43,6 @@ def generate_config(file):
             print(f"{t*2}-", end=" ", file=file)
             print(f"n_nodes: {n}\n{t*3}edge_ratio: {r}\n{t*3}eps: {e}\n{t*3}meta: exp_{idx}\n", file=file)
             idx += 1
-            break
-        break
 
 if __name__ == "__main__":
 
