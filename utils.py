@@ -42,7 +42,7 @@ def parse_credal_net(cn_str: str):
         line = line.strip()
 
         # Identificazione della variabile
-        var_match = re.match(r'^([A-Za-z0-9_]+):Range\(\[.*\]\)', line)
+        var_match = re.match(r'^([A-Za-z0-9_]+):', line)
         if var_match:
             current_var = var_match.group(1)
             continue

@@ -1,7 +1,8 @@
 venv/
 results/
+bns/
+data/
 *.bif
-*.csv
 *.pyc
+*.txt
 __pycache__
-config.yaml
