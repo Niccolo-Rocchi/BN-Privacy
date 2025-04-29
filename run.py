@@ -19,7 +19,7 @@ def run_idm(conf):
     pool_ss = 500
     n_ds = 20   ###
     n_bns = 100 ###
-    error = np.arange(0, 1, 0.05)
+    error = np.arange(10e-4*0.5, 0.5, 0.02)
     
     # Init local hyperp.
     exp = conf[0]
