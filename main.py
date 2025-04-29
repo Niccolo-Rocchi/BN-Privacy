@@ -23,8 +23,7 @@ if __name__ == "__main__":
 
     # Create results directory
     res_path = "./results"
-    if os.path.exists(res_path): shutil.rmtree(res_path)
-    os.makedirs(res_path)
+    if not os.path.exists(res_path): os.makedirs(res_path)
 
     # Run experiments (in parallel)
     Parallel(n_jobs=num_cores)(delayed(run_idm)(conf) for conf in confs)
