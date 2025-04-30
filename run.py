@@ -17,9 +17,9 @@ def run_idm(conf):
     gpop_ss = 10000
     rpop_ss = 5000
     pool_ss = 500
-    n_ds = 50
-    n_bns = 1000
-    error = np.arange(10e-4*0.5, 0.5, 0.02)
+    n_ds = 30
+    n_bns = 500
+    error = np.logspace(-4, 0, 30, endpoint=False)
     
     # Init local hyperp.
     exp = conf[0]
