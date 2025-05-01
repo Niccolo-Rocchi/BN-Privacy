@@ -5,4 +5,5 @@ data/
 *.bif
 *.pyc
 *.txt
+*.pdf
 __pycache__
