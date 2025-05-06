@@ -26,8 +26,8 @@ res_path = "./results"
 if not os.path.exists(res_path): os.makedirs(res_path)
 
 # Set experiments hyperparameters
-n_nodes = [10, 20, 50, 70, 100]
-edge_ratios = [1, 2, 3, 4]
+n_nodes = [10, 20, 50, 100]
+edge_ratios = [1, 2, 4]
 gpop_ss = 10000
 
 # For each configuration ...

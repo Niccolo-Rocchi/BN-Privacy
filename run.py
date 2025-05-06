@@ -17,9 +17,9 @@ def run_idm(conf):
     gpop_ss = 10000
     rpop_ss = 5000
     pool_ss = 500
-    n_ds = 30
+    n_ds = 20
     n_bns = 500
-    error = np.logspace(-4, 0, 30, endpoint=False)
+    error = np.logspace(-4, 0, 20, endpoint=False)
     
     # Init local hyperp.
     exp = conf[0]
@@ -58,8 +58,7 @@ def run_idm(conf):
             # Sample pool and rpop
             pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
             pool = gpop.iloc[pool_idx]
-            rpop_idx = np.random.choice(range(gpop_ss), size=rpop_ss, replace=False)
-            rpop = gpop.iloc[rpop_idx]
+            rpop = gpop.iloc[~gpop.index.isin(pool_idx)].sample(rpop_ss)
 
             # Set ground truth membership
             gpop["in-pool"] = False

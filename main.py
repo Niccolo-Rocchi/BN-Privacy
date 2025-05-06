@@ -12,9 +12,10 @@ exp_names = [os.path.splitext(f)[0] for f in os.listdir("./data/")]
 
 trials = [
     {"ess": 1}, 
-    {"ess": 2}, 
-    {"ess": 5},
-    {"ess": 10}
+    {"ess": 10}, 
+    {"ess": 50},
+    {"ess":100},
+    {"ess":1000}
 ]
 
 confs = tqdm([i for i in product(exp_names, trials)])
