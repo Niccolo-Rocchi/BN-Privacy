@@ -1,4 +1,3 @@
-# Libraries
 import numpy as np
 import math
 import pyagrum as gum
@@ -31,7 +30,7 @@ def LLR(x: dict, theta, theta_hat):
 
     return ll_theta_hat - ll_theta
 
-# Parse the credal network (TODO: improve)
+# Parse the credal network
 def parse_credal_net(cn_str: str):
     credal_dict = defaultdict(lambda: defaultdict(list))
     current_var = None
@@ -41,7 +40,7 @@ def parse_credal_net(cn_str: str):
     for line in lines:
         line = line.strip()
 
-        # Identificazione della variabile
+        # Variable identification
         var_match = re.match(r'^([A-Za-z0-9_]+):', line)
         if var_match:
             current_var = var_match.group(1)
@@ -50,13 +49,13 @@ def parse_credal_net(cn_str: str):
         if current_var is None or not line:
             continue
 
-        # Identificazione di una CPT con intestazione <condizioni>
+        # CPT identification
         cpt_match = re.match(r'^<([^>]*)>\s*:\s*(.*)', line)
         if cpt_match:
             condition = f"<{cpt_match.group(1).strip()}>"
             raw_cpt = cpt_match.group(2)
 
-            # Estrarre tutte le liste interne: [[x,x,x], [x,x,x], ...]
+            # Extraction of inner lists: [[x,x,x], [x,x,x], ...]
             vectors = re.findall(r'\[\s*([^\[\]]+?)\s*\]', raw_cpt)
             for vec in vectors:
                 prob_list = [float(x.strip()) for x in vec.split(',')]
@@ -206,7 +205,7 @@ def are_all_bn_different(bn_list):
 
     return
 
-# Add counts of events to a bn (TODO: improve)
+# Add counts of events to a BN
 def add_counts(bn, data):
 
     for node in bn.names():
@@ -215,7 +214,7 @@ def add_counts(bn, data):
         parent_names = [bn.variable(p).name() for p in parents]
 
         shape = [bn.variable(p).domainSize() for p in parents] + [var.domainSize()]
-        counts_array = np.zeros(shape, dtype=float)  # float, not int!
+        counts_array = np.zeros(shape, dtype=float)  # float, not int
 
         for _, row in data.iterrows():
             try:

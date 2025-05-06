@@ -84,7 +84,7 @@ def run_idm(conf):
             bns_sample = get_simplex_inner(cn, n_bns)
             # are_all_bn_different(bns_sample)
 
-            # MIA (BN)
+            # Membership inference attack (MIA) (BN)
             # Estimate the distribution of LLR(x) from rpop (i.e. under H_0)
             bn_theta_ie = gum.LazyPropagation(bn_theta)
             bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
