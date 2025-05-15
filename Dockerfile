@@ -5,6 +5,6 @@ COPY . .
 
 RUN python -m pip install --upgrade pip
 RUN if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
-RUN python generation.py
+RUN python src/generation.py
 
 CMD /bin/sh

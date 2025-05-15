@@ -15,13 +15,13 @@ from utils import *
 warnings.filterwarnings('ignore')
 
 # Create directories
-bn_path = "./bns"
+bn_path = "../bns"
 if os.path.exists(bn_path): shutil.rmtree(bn_path)
 os.makedirs(bn_path)
-data_path = "./data"
+data_path = "../data"
 if os.path.exists(data_path): shutil.rmtree(data_path)
 os.makedirs(data_path)
-res_path = "./results"
+res_path = "../results"
 if not os.path.exists(res_path): os.makedirs(res_path)
 
 # Set experiments hyperparameters
@@ -35,8 +35,8 @@ for i, (n, r) in enumerate(product(n_nodes, edge_ratios)):
     # Generate BN
     bn_gen = gum.BNGenerator()
     bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=2)
-    gum.saveBN(bn, f"./bns/exp{i}.bif")
-    with open("./results/exp_meta.txt", "a") as m: 
+    gum.saveBN(bn, f"../bns/exp{i}.bif")
+    with open("../results/exp_meta.txt", "a") as m: 
         m.write(f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n")
 
     # Generate gpop
@@ -44,6 +44,6 @@ for i, (n, r) in enumerate(product(n_nodes, edge_ratios)):
     data_gen.drawSamples(gpop_ss)
     data_gen.setDiscretizedLabelModeRandom()
     gpop = data_gen.to_pandas()
-    gpop.to_csv(f"./data/exp{i}.csv", index=False)
+    gpop.to_csv(f"../data/exp{i}.csv", index=False)
 
     

@@ -8,7 +8,7 @@ import shutil
 
 num_cores = multiprocessing.cpu_count() - 1
 
-exp_names = [os.path.splitext(f)[0] for f in os.listdir("./data/")]
+exp_names = [os.path.splitext(f)[0] for f in os.listdir("../data/")]
 
 trials = [
     {"ess": 1}, 

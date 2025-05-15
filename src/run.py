@@ -23,8 +23,8 @@ def run_idm(conf):
     
     # Init local hyperp.
     exp = conf[0]
-    gpop_or = pd.read_csv(f"./data/{exp}.csv")
-    bn_or = gum.loadBN(f"./bns/{exp}.bif")
+    gpop_or = pd.read_csv(f"../data/{exp}.csv")
+    bn_or = gum.loadBN(f"../bns/{exp}.bif")
     n_nodes = len(bn_or.nodes())
     ess = conf[1].get("ess")
 
@@ -154,9 +154,9 @@ def run_idm(conf):
 
         except:
 
-            with open("./results/log.txt", "a") as log: 
+            with open("../results/log.txt", "a") as log: 
                 log.write(f"{exp}: error with sample {ds}.\n")
                 # log.write(traceback.format_exc())
 
     # Save results
-    results.to_csv(f"./results/{exp}-ess{ess}.csv", index=False)
+    results.to_csv(f"../results/{exp}-ess{ess}.csv", index=False)
