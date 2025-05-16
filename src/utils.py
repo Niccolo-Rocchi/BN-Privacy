@@ -226,4 +226,46 @@ def add_counts(bn, data):
         bn.cpt(node).fillWith(counts_array.flatten().tolist())
         
     return
+
+# Create noisy bn (Zhang et al., 2017)
+def get_noisy_bn(bn, scale: float):
+
+    bn_ie = gum.LazyPropagation(bn)
+    bn_ie.makeInference()
+
+    bn_noisy = gum.BayesNet(bn)
+
+    # For each node ...
+    for node in bn.names():
+
+        # Get the joint P(X, Pa(X))
+        joint = bn_ie.jointPosterior(bn.family(node))
+
+        # Add noise to P(X, Pa(X)) and normalize
+        noise = np.random.laplace(scale=scale, size=joint.shape)
+        noisy_joint = np.clip(joint.toarray() + noise, a_min=10e-8, a_max=None)
+        noisy_joint = noisy_joint / np.sum(noisy_joint)
+        joint.fillWith(noisy_joint.flatten())
+
+        # Compute the conditional P(X | Pa(X))
+        cond = joint / joint.sumOut(node)
+
+        # Fill noisy BN
+        bn_noisy.cpt(node).fillWith(cond)
+
+    # Check noisy bn
+    bn_noisy.check()    # OK if = ().
+
+    return bn_noisy
+
+# MPE function
+def mpe(bn_ie: gum.LazyPropagation, target: str, evid: dict):
+
+    # Set evidence from 'evid_vars'
+    bn_ie.setEvidence(evid)
+
+    # Compute MPE
+    mpe = bn_ie.mpe()
+
+    return mpe.todict().get(target)
             
