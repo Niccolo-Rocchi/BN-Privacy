@@ -25,8 +25,8 @@ res_path = "./results"
 if not os.path.exists(res_path): os.makedirs(res_path)
 
 # Set experiments hyperparameters
-n_nodes = 10
-gpop_ss = 1000
+n_nodes = 20
+gpop_ss = 2000
 n_exps = 1
 
 # Set BN (NB) structure

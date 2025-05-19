@@ -15,7 +15,11 @@ if __name__ == "__main__":
     # Run experiments
     for exp in exp_names: 
         conf = [exp, {"ess":1}]
-        run_idm(conf)
+        eps = run_idm(conf)
 
     # Run experiments (in parallel)
     # Parallel(n_jobs=num_cores)(delayed(run_idm)(conf) for conf in confs)
+
+
+    # Inference
+    # TODO:

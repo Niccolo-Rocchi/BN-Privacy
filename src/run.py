@@ -13,16 +13,17 @@ from utils import *
 warnings.filterwarnings('ignore')
 
 # Run local IDM experiment
-def run_idm(conf):
+def run_idm(conf) -> float:
 
     # Init global hyperp.
-    gpop_ss = 1000
-    rpop_ss = 500
-    pool_ss = 50
-    n_ds = 10
-    n_bns = 100
+    gpop_ss = 2000
+    rpop_ss = 1000
+    pool_ss = 100
+    n_ds = 5
+    n_bns = 50
     error = np.logspace(-4, 0, 20, endpoint=False)
-    eps = np.arange(1, 100, 1)
+    eps_list = np.arange(1, 50, 5)
+    tol = 0.02
     
     # Init local hyperp.
     exp = conf[0]
@@ -89,12 +90,12 @@ def run_idm(conf):
 
     # MIA (CN)
     auc_cn_dss = []
-    for ds in tqdm(range(n_ds), desc="Credal samples", unit="item"):
+    for ds in tqdm(range(n_ds), desc="Data samples (CN)", unit="item"):
 
         # Retrieve ds-related info
-        cn = cn_dss[ds]
         y_true = gpop[f"in-pool-{ds}"]
         pos = len(pool)
+        cn = cn_dss[ds]
         bn_theta_ie = gum.LazyPropagation(bn_theta_dss[ds])
 
         # Extract random subset within simplex
@@ -157,22 +158,21 @@ def run_idm(conf):
     assert(len(auc_cn_dss) == n_ds)
 
     # MIA (Noisy BN)
-    tol = 0.01
-    e_best = eps[-1]
-    for e in tqdm(eps, unit="item", desc="Eps", dynamic_ncols=True):
+    e_best = eps_list[-1]
+    for eps in tqdm(eps_list, unit="item", desc="Eps", dynamic_ncols=True):
 
         auc_bn_noisy_dss = []
 
-        for ds in tqdm(range(n_ds), unit="item", desc="Data samples", dynamic_ncols=True, leave=False):
+        for ds in tqdm(range(n_ds), unit="item", desc="Data samples (BN eps)", dynamic_ncols=True, leave=False):
 
             # Retrieve ds-related info
-            bn_theta_hat = bn_theta_hat_dss[ds]
             y_true = gpop[f"in-pool-{ds}"]
             pos = len(pool)
+            bn_theta_hat = bn_theta_hat_dss[ds]
             bn_theta_ie = gum.LazyPropagation(bn_theta_dss[ds])
 
             # Get noisy BN
-            scale = (2 * bn_theta_hat.size()) / (len(pool) * e)
+            scale = (2 * bn_theta_hat.size()) / (len(pool) * eps)
             bn_noisy = get_noisy_bn(bn_theta_hat, scale)
 
             try:                
@@ -207,7 +207,7 @@ def run_idm(conf):
             except:
 
                 with open("./results/log.txt", "a") as log: 
-                    log.write(f"{exp}: error with sample {ds} (BN noisy, eps: {e}).\n")
+                    log.write(f"{exp}: error with sample {ds} (BN noisy, eps: {eps}).\n")
                     log.write(traceback.format_exc())
 
             
@@ -218,12 +218,10 @@ def run_idm(conf):
         assert(len(auc_bn_noisy_dss) == n_ds)
 
         # Check
-        if abs(auc_cn - auc_bn) < tol:
-            e_best = e
+        if abs(auc_cn - auc_bn) <= tol:
+            e_best = eps
             break
 
     print(f"Best eps: {e_best}, AUCs: {auc_cn:.3f} (CN), {auc_bn:.3f} (BN noisy), Diff. AUC: {abs(auc_cn - auc_bn):.3f}")   ##
 
-
-    ## Inference
-    # TODO:
+    return eps
