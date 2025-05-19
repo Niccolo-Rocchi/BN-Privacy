@@ -10,17 +10,12 @@ num_cores = multiprocessing.cpu_count() - 1
 
 exp_names = [os.path.splitext(f)[0] for f in os.listdir("./data/")]
 
-trials = [
-    {"ess": 1}, 
-    {"ess": 10}, 
-    {"ess": 50},
-    {"ess":100},
-    {"ess":1000}
-]
-
-confs = tqdm([i for i in product(exp_names, trials)])
-
 if __name__ == "__main__":
 
+    # Run experiments
+    for exp in exp_names: 
+        conf = [exp, {"ess":1}]
+        run_idm(conf)
+
     # Run experiments (in parallel)
-    Parallel(n_jobs=num_cores)(delayed(run_idm)(conf) for conf in confs)
+    # Parallel(n_jobs=num_cores)(delayed(run_idm)(conf) for conf in confs)

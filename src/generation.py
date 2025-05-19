@@ -10,7 +10,7 @@ import yaml
 import shutil
 import os
 
-from src.utils import *
+from utils import *
 
 warnings.filterwarnings('ignore')
 
@@ -25,19 +25,20 @@ res_path = "./results"
 if not os.path.exists(res_path): os.makedirs(res_path)
 
 # Set experiments hyperparameters
-n_nodes = [10, 20, 50, 100]
-edge_ratios = [1, 2, 4]
-gpop_ss = 10000
+n_nodes = 10
+gpop_ss = 1000
+n_exps = 1
 
-# For each configuration ...
-for i, (n, r) in enumerate(product(n_nodes, edge_ratios)):
+# Set BN (NB) structure
+bn_str_gen = (f"T->X{i}" for i in range(n_nodes -1))
+bn_str = "; ".join(bn_str_gen)
+
+# For each experiment ...
+for i in range(n_exps):
 
     # Generate BN
-    bn_gen = gum.BNGenerator()
-    bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=2)
+    bn = gum.fastBN(bn_str)
     gum.saveBN(bn, f"./bns/exp{i}.bif")
-    with open("./results/exp_meta.txt", "a") as m: 
-        m.write(f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n")
 
     # Generate gpop
     data_gen = gum.BNDatabaseGenerator(bn)

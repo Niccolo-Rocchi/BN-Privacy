@@ -4,9 +4,11 @@ import traceback
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
+from sklearn import metrics
 import pyagrum as gum
+from tqdm import tqdm
 
-from src.utils import *
+from utils import *
 
 warnings.filterwarnings('ignore')
 
@@ -14,26 +16,27 @@ warnings.filterwarnings('ignore')
 def run_idm(conf):
 
     # Init global hyperp.
-    gpop_ss = 10000
-    rpop_ss = 5000
-    pool_ss = 500
-    n_ds = 20
-    n_bns = 500
+    gpop_ss = 1000
+    rpop_ss = 500
+    pool_ss = 50
+    n_ds = 10
+    n_bns = 100
     error = np.logspace(-4, 0, 20, endpoint=False)
+    eps = np.arange(1, 100, 1)
     
     # Init local hyperp.
     exp = conf[0]
-    gpop_or = pd.read_csv(f"./data/{exp}.csv")
-    bn_or = gum.loadBN(f"./bns/{exp}.bif")
-    n_nodes = len(bn_or.nodes())
+    gpop = pd.read_csv(f"./data/{exp}.csv")
+    bn = gum.loadBN(f"./bns/{exp}.bif")
+    n_nodes = len(bn.nodes())
     ess = conf[1].get("ess")
 
     # Debug
-    assert(gpop_ss == gpop_or.shape[0])
-    assert(n_nodes == gpop_or.shape[1])
+    assert(gpop_ss == gpop.shape[0])
+    assert(n_nodes == gpop.shape[1])
 
     # Compute theoretical bound
-    compl = bn_or.dim()
+    compl = bn.dim()
     bound = math.sqrt(compl/pool_ss)
 
     # Find power (beta) for any error (alpha) given theoretical bound
@@ -41,79 +44,66 @@ def run_idm(conf):
     z_one_minus_beta = [bound - i for i in z_alpha]
     beta = [norm.cdf(i).item() for i in z_one_minus_beta]
 
-    # Init results
-    results = pd.DataFrame(
-        {"error": error,
-        "power_bound": beta}
-    )
-
+    # Store information
+    bn_theta_dss = []
+    bn_theta_hat_dss = []
+    cn_dss = []
     for ds in range(n_ds):
-        
+
+        # Sample pool and rpop
+        pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
+        gpop[f"in-pool-{ds}"] = gpop.index.isin(pool_idx)
+        pool = gpop[gpop[f"in-pool-{ds}"]].iloc[:, :n_nodes]
+        rpop = gpop[~gpop[f"in-pool-{ds}"]].iloc[:, :n_nodes].sample(rpop_ss)
+
+        # Estimate BN(theta) from rpop
+        theta_learner=gum.BNLearner(rpop)
+        theta_learner.useSmoothingPrior(1e-5)
+        bn_theta = theta_learner.learnParameters(bn.dag())
+
+        # Estimate BN(theta_hat) from pool
+        theta_hat_learner=gum.BNLearner(pool)
+        theta_hat_learner.useSmoothingPrior(1e-5)
+        bn_theta_hat = theta_hat_learner.learnParameters(bn.dag())
+
+        # Estimate CN by local IDM from BN(theta_hat)
+        bn_copy = gum.BayesNet(bn)
+        add_counts(bn_copy, pool)
+        cn = gum.CredalNet(bn_copy)
+        cn.idmLearning(ess)
+
+        # Save nets
+        bn_theta_dss.append(bn_theta)
+        bn_theta_hat_dss.append(bn_theta_hat)
+        cn_dss.append(cn)
+
+        # Debug
+        assert(len(pool) == sum(gpop[f"in-pool-{ds}"]))
+        assert(len(pool) == pool_ss)
+        assert(len(rpop) == rpop_ss)
+
+    # Debug
+    assert(len(bn_theta_dss) == n_ds)
+    assert(len(bn_theta_hat_dss) == n_ds)
+    assert(len(cn_dss) == n_ds)
+
+    # MIA (CN)
+    auc_cn_dss = []
+    for ds in tqdm(range(n_ds), desc="Credal samples", unit="item"):
+
+        # Retrieve ds-related info
+        cn = cn_dss[ds]
+        y_true = gpop[f"in-pool-{ds}"]
+        pos = len(pool)
+        bn_theta_ie = gum.LazyPropagation(bn_theta_dss[ds])
+
+        # Extract random subset within simplex
+        bns_sample = get_simplex_inner(cn, n_bns)
+
         try:
 
-            # Copy BN and data
-            gpop = gpop_or.copy()
-            bn = gum.BayesNet(bn_or)
-
-            # Sample pool and rpop
-            pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
-            pool = gpop.iloc[pool_idx]
-            rpop = gpop.iloc[~gpop.index.isin(pool_idx)].sample(rpop_ss)
-
-            # Set ground truth membership
-            gpop["in-pool"] = False
-            gpop.loc[pool_idx, "in-pool"] = True
-            tp = len(pool_idx)
-
-            # Estimate BN(theta) from rpop and BN(theta_hat) from pool
-            theta_learner=gum.BNLearner(rpop)
-            theta_learner.useSmoothingPrior(1e-5)
-            bn_theta = theta_learner.learnParameters(bn.dag())
-
-            theta_hat_learner=gum.BNLearner(pool)
-            theta_hat_learner.useSmoothingPrior(1e-5)
-            bn_theta_hat = theta_hat_learner.learnParameters(bn.dag())
-
-            # Estimate CN by local IDM 
-            bn_copy = gum.BayesNet(bn)
-            add_counts(bn_copy, pool)
-            cn = gum.CredalNet(bn_copy)
-            cn.idmLearning(ess)
-
-            # Extract random subset within simplex
-            bns_sample = get_simplex_inner(cn, n_bns)
-            # are_all_bn_different(bns_sample)
-
-            # Membership inference attack (MIA) (BN)
-            # Estimate the distribution of LLR(x) from rpop (i.e. under H_0)
-            bn_theta_ie = gum.LazyPropagation(bn_theta)
-            bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
-            L_im = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1).dropna().sort_values() 
-
-            # Compute LLR(x) on general population
-            llr_gpop = gpop[[*bn.names()]].apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_theta_hat_ie), axis=1)
-
-            # Init the power vector (BN)
-            power_bn = []
-
-            # For each error ...
-            for e in error:
-
-                # Compute threshold
-                t = np.quantile(L_im, 1-e).item()
-
-                # LLR test. Reject H_0? True => x in pool; False => x in rpop.
-                y_pred = llr_gpop > t
-
-                # Compute and store power (tpr)
-                tpr = sum(gpop["in-pool"] & y_pred) / tp
-                power_bn = power_bn + [tpr]
-
-            # Store BN results for this data sample
-            results[f"power_BN_ds{ds}"] = power_bn
-
-            # MIA (CN)
-            best_sum = 0
+            # MIA
+            best_sum = -np.inf
             best_bn_idx = 0
             for i, bn_s in enumerate(bns_sample):
 
@@ -121,17 +111,17 @@ def run_idm(conf):
                 bn_s_ie = gum.LazyPropagation(bn_s)
                 L_im_s = rpop.apply(lambda x: LL(x.to_dict(), bn_s_ie), axis=1).dropna()
 
-                L_im_s_sum = np.sum(L_im_s)
-                if L_im_s_sum > best_sum: 
-                    best_sum = L_im_s_sum
+                L_sum = np.sum(L_im_s)
+                if L_sum > best_sum: 
+                    best_sum = L_sum
                     best_bn_idx = i
 
             # Get best BN inside simplex
-            best_bn_s_ie = gum.LazyPropagation(bns_sample[best_bn_idx])
-            L_im_best = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, best_bn_s_ie), axis=1).dropna()
+            bn_ie = gum.LazyPropagation(bns_sample[best_bn_idx])
+            L_im = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_ie), axis=1).dropna()
 
             # Compute LLR(x) on general population
-            llr_gpop_s = gpop[[*bn.names()]].apply(lambda x: LLR(x.to_dict(), bn_theta_ie, best_bn_s_ie), axis=1)
+            llr_gpop = gpop[[*bn.names()]].apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_ie), axis=1)
 
             # Init the power vector (CN)
             power_cn = []
@@ -140,23 +130,100 @@ def run_idm(conf):
             for e in error:
 
                 # Compute threshold
-                t = np.quantile(L_im_best, 1-e).item()
+                t = np.quantile(L_im, 1-e).item()
 
                 # LLR test. Reject H_0? True => x in pool; False => x in rpop.
-                y_pred_s = llr_gpop_s > t
+                y_pred_s = llr_gpop > t
                 
                 # Compute and store power (tpr)
-                tpr = sum(gpop["in-pool"] & y_pred_s) / tp
+                tpr = sum(y_true & y_pred_s) / pos
                 power_cn = power_cn + [tpr]
-            
-            # Store CN results for this data sample
-            results[f"power_CN_ds{ds}"] = power_cn
+
+            # Compute and store AUC
+            auc = metrics.auc(error, power_cn)
+            auc_cn_dss.append(auc)
 
         except:
 
             with open("./results/log.txt", "a") as log: 
-                log.write(f"{exp}: error with sample {ds}.\n")
+                log.write(f"{exp}: error with sample {ds} (CN).\n")
                 # log.write(traceback.format_exc())
 
-    # Save results
-    results.to_csv(f"../results/{exp}-ess{ess}.csv", index=False)
+            
+    # Compute Avg(AUC)
+    auc_cn = sum(auc_cn_dss) / len(auc_cn_dss)
+
+    # Debug
+    assert(len(auc_cn_dss) == n_ds)
+
+    # MIA (Noisy BN)
+    tol = 0.01
+    e_best = eps[-1]
+    for e in tqdm(eps, unit="item", desc="Eps", dynamic_ncols=True):
+
+        auc_bn_noisy_dss = []
+
+        for ds in tqdm(range(n_ds), unit="item", desc="Data samples", dynamic_ncols=True, leave=False):
+
+            # Retrieve ds-related info
+            bn_theta_hat = bn_theta_hat_dss[ds]
+            y_true = gpop[f"in-pool-{ds}"]
+            pos = len(pool)
+            bn_theta_ie = gum.LazyPropagation(bn_theta_dss[ds])
+
+            # Get noisy BN
+            scale = (2 * bn_theta_hat.size()) / (len(pool) * e)
+            bn_noisy = get_noisy_bn(bn_theta_hat, scale)
+
+            try:                
+
+                # MIA
+                bn_noisy_ie = gum.LazyPropagation(bn_noisy)
+                L_im = rpop.apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_noisy_ie), axis=1).dropna().sort_values() 
+
+                # Compute LLR(x) on general population
+                llr_gpop = gpop[[*bn.names()]].apply(lambda x: LLR(x.to_dict(), bn_theta_ie, bn_noisy_ie), axis=1)
+
+                # Init the power vector (BN)
+                power_bn_noisy = []
+
+                # For each error ...
+                for e in error:
+
+                    # Compute threshold
+                    t = np.quantile(L_im, 1-e).item()
+
+                    # LLR test. Reject H_0? True => x in pool; False => x in rpop.
+                    y_pred = llr_gpop > t
+
+                    # Compute and store power (tpr)
+                    tpr = sum(y_true & y_pred) / pos
+                    power_bn_noisy = power_bn_noisy + [tpr]
+
+                # Compute and store AUC
+                auc = metrics.auc(error, power_bn_noisy)
+                auc_bn_noisy_dss.append(auc)
+
+            except:
+
+                with open("./results/log.txt", "a") as log: 
+                    log.write(f"{exp}: error with sample {ds} (BN noisy, eps: {e}).\n")
+                    log.write(traceback.format_exc())
+
+            
+        # Compute Avg(AUC)
+        auc_bn = sum(auc_bn_noisy_dss) / n_ds
+
+        # Debug
+        assert(len(auc_bn_noisy_dss) == n_ds)
+
+        # Check
+        if abs(auc_cn - auc_bn) < tol:
+            e_best = e
+            break
+
+    print(f"Best eps: {e_best}, AUCs: {auc_cn:.3f} (CN), {auc_bn:.3f} (BN noisy), Diff. AUC: {abs(auc_cn - auc_bn):.3f}")   ##
+
+
+    ## Inference
+    # TODO:
