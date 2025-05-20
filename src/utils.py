@@ -258,14 +258,28 @@ def get_noisy_bn(bn, scale: float):
 
     return bn_noisy
 
-# MPE function
-def mpe(bn_ie: gum.LazyPropagation, target: str, evid: dict):
+# MPE function for BN
+def MPE_bn(bn_ie: gum.LazyPropagation, target: str, evid: dict):
 
-    # Set evidence from 'evid_vars'
+    # Set evidence
     bn_ie.setEvidence(evid)
 
     # Compute MPE
     mpe = bn_ie.mpe()
 
     return mpe.todict().get(target)
+
+# MPE function for CN
+def MPE_cn(cn_ie: gum.CNLoopyPropagation, target: str, evid: dict):
+
+    # Set evidence
+    cn_ie.setEvidence(evid)
+    
+    # Compute MPE
+    cn_ie.makeInference()
+    marg = cn_ie.marginalMin(target).argmax()
+    mpe = marg[0][0].get(target)
+    prob = marg[1]
+
+    return mpe, prob
             

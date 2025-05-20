@@ -13,13 +13,13 @@ from utils import *
 warnings.filterwarnings('ignore')
 
 # Run local IDM experiment
-def run_idm(conf) -> float:
+def run_idm(conf):
 
     # Init global hyperp.
     gpop_ss = 2000
     rpop_ss = 1000
     pool_ss = 100
-    n_ds = 5
+    n_ds = 10
     n_bns = 50
     error = np.logspace(-4, 0, 20, endpoint=False)
     eps_list = np.arange(1, 50, 5)
@@ -225,3 +225,67 @@ def run_idm(conf) -> float:
     print(f"Best eps: {e_best}, AUCs: {auc_cn:.3f} (CN), {auc_bn:.3f} (BN noisy), Diff. AUC: {abs(auc_cn - auc_bn):.3f}")   ##
 
     return eps
+
+def run_inference_bn(bn):
+    '''
+    Notice: `bn` is assumed to be a Naive Bayes model with target variable `T`.
+    '''
+
+    # Store information
+    n_nodes = bn.size()
+    cov = sorted([i for i in bn.names()])
+    cov.remove("T")
+
+    # Debug
+    assert(len(cov) == bn.size() - 1)
+
+    # Create object for inference
+    bn_ie = gum.LazyPropagation(bn)
+
+    # Compute all combinations of evidence
+    evid_gen = product(*((0,1) for _ in range(n_nodes - 1)))
+    mpes = []
+    for e in evid_gen:
+        evid = dict(zip(cov, e))
+        mpe = MPE_bn(bn_ie, "T", evid)
+        mpes.append(mpe)
+        
+    # Debug
+    assert(len(mpes) == 2**(len(cov)))
+
+    return mpes
+
+def run_inference_cn(cn):
+    '''
+    Notice: `cn` is assumed to be a Naive Bayes model with target variable `T`.
+    '''
+
+    # Store information
+    bn = cn.current_bn()
+    n_nodes = bn.size()
+    cov = sorted([i for i in bn.names()])
+    cov.remove("T")
+
+    # Debug
+    assert(len(cov) == bn.size() - 1)
+
+    # Create object for inference
+    cn.computeBinaryCPTMinMax()
+
+    # Compute all combinations of evidence
+    evid_gen = product(*((0,1) for _ in range(n_nodes - 1)))
+    mpes = []
+    probs = []
+    for e in evid_gen:
+        evid = dict(zip(cov, e))
+        cn_ie = gum.CNLoopyPropagation(cn)
+        mpe, prob = MPE_cn(cn_ie, "T", evid)
+        mpes.append(mpe)
+        probs.append(prob)
+        
+    # Debug
+    assert(len(mpes) == 2**(len(cov)))
+    assert(len(probs) == 2**(len(cov)))
+
+    return mpes, probs
+
