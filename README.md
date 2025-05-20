@@ -17,3 +17,6 @@ Create and activate a Python virtual environment, then install the packages list
 
 ## Plot results
 Run the `Plot_results.ipynb` notebook. You should be able to choose which experiments to plot.
+
+## How to update all Python packages
+Run: `pip install --upgrade $(pip freeze | cut -d '=' -f 1)` to upgrade, and `pip freeze > requirements.txt` to update the requirements file.
