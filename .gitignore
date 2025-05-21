@@ -1,5 +1,5 @@
 venv/
-results*/
+results*
 bns/
 data/
 *.bif
