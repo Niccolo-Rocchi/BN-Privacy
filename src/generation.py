@@ -27,7 +27,7 @@ if not os.path.exists(res_path): os.makedirs(res_path)
 # Set experiments hyperparameters
 n_nodes = 12
 gpop_ss = 2000
-n_exps = 2
+n_exps = 10
 
 # Set BN (NB) structure
 bn_str_gen = (f"T->X{i}" for i in range(n_nodes -1))

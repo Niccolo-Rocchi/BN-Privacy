@@ -36,15 +36,6 @@ def run_idm(conf):
     assert(gpop_ss == gpop.shape[0])
     assert(n_nodes == gpop.shape[1])
 
-    # Compute theoretical bound
-    compl = bn.dim()
-    bound = math.sqrt(compl/pool_ss)
-
-    # Find power (beta) for any error (alpha) given theoretical bound
-    z_alpha = [norm.ppf(1 - i).item() for i in error]
-    z_one_minus_beta = [bound - i for i in z_alpha]
-    beta = [norm.cdf(i).item() for i in z_one_minus_beta]
-
     # Store information
     bn_theta_dss = []
     bn_theta_hat_dss = []
@@ -90,7 +81,7 @@ def run_idm(conf):
 
     # MIA (CN)
     auc_cn_dss = []
-    for ds in tqdm(range(n_ds), desc="Data samples (CN)", unit="item"):
+    for ds in range(n_ds):  # tqdm(range(n_ds), desc="Data samples (CN)", unit="item")
 
         # Retrieve ds-related info
         y_true = gpop[f"in-pool-{ds}"]
@@ -103,7 +94,7 @@ def run_idm(conf):
 
         try:
 
-            # MIA
+            # MIA 
             best_sum = -np.inf
             best_bn_idx = 0
             for i, bn_s in enumerate(bns_sample):
@@ -159,11 +150,11 @@ def run_idm(conf):
 
     # MIA (Noisy BN)
     e_best = eps_list[-1]
-    for eps in tqdm(eps_list, unit="item", desc="Eps", dynamic_ncols=True):
+    for eps in eps_list:    # tqdm(eps_list, unit="item", desc="Eps", dynamic_ncols=True)
 
         auc_bn_noisy_dss = []
 
-        for ds in tqdm(range(n_ds), unit="item", desc="Data samples (BN eps)", dynamic_ncols=True, leave=False):
+        for ds in range(n_ds):  # tqdm(range(n_ds), unit="item", desc="Data samples (BN eps)", dynamic_ncols=True, leave=False)
 
             # Retrieve ds-related info
             y_true = gpop[f"in-pool-{ds}"]
@@ -222,9 +213,7 @@ def run_idm(conf):
             e_best = eps
             break
 
-    print(f"Best eps: {e_best}, AUCs: {auc_cn:.3f} (CN), {auc_bn:.3f} (BN noisy), Diff. AUC: {abs(auc_cn - auc_bn):.3f}")   ##
-
-    return eps
+    return exp, e_best
 
 def run_inference_bn(bn):
     '''
@@ -288,4 +277,47 @@ def run_inference_cn(cn):
     assert(len(probs) == 2**(len(cov)))
 
     return mpes, probs
+
+
+def run_inferences(exp, eps):
+
+    # Store GT BN
+    gt = gum.loadBN(f"./bns/{exp}.bif")
+    gpop = pd.read_csv(f"./data/{exp}.csv")
+
+    # Learn BN
+    bn_learner=gum.BNLearner(gpop)
+    bn_learner.useSmoothingPrior(1e-5)
+    bn = bn_learner.learnParameters(gt.dag())
+
+    # Learn CN
+    bn_copy = gum.BayesNet(bn)
+    add_counts(bn_copy, gpop)
+    cn = gum.CredalNet(bn_copy)
+    cn.idmLearning(1)
+
+    # Learn noisy BN 
+    scale = (2 * bn.size()) / (len(gpop) * eps)
+    bn_noisy = get_noisy_bn(bn, scale)
+
+    # Run inferences
+    gt_mpes = run_inference_bn(gt)
+    bn_mpes = run_inference_bn(bn)
+    bn_noisy_mpes = run_inference_bn(bn_noisy)
+    cn_mpes, cn_probs = run_inference_cn(cn)
+
+    # Save results
+    results = pd.DataFrame(
+        {
+            "gt_mpes": gt_mpes, 
+            "bn_mpes": bn_mpes,
+            "bn_noisy_mpes": bn_noisy_mpes,
+            "cn_mpes": cn_mpes, 
+            "cn_probs": cn_probs
+        }
+    )
+
+    results.to_csv(f"results/{exp}-eps{eps}.csv", index = False)
+
+
 
