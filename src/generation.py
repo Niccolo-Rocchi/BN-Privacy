@@ -3,13 +3,13 @@ from pathlib import Path
 import warnings
 import traceback
 import numpy as np
+from numpy import random
 import pandas as pd
 from scipy.stats import norm
 import pyagrum as gum
 import yaml
 import shutil
 import os
-
 from utils import *
 
 warnings.filterwarnings('ignore')
@@ -27,11 +27,15 @@ if not os.path.exists(res_path): os.makedirs(res_path)
 # Set experiments hyperparameters
 n_nodes = 12
 gpop_ss = 2000
-n_exps = 1
+n_exps = 2
 
 # Set BN (NB) structure
 bn_str_gen = (f"T->X{i}" for i in range(n_nodes -1))
 bn_str = "; ".join(bn_str_gen)
+
+# Set seeds
+random.seed(42)
+gum.initRandom(seed=42)
 
 # For each experiment ...
 for i in range(n_exps):

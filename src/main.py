@@ -3,6 +3,7 @@ import multiprocessing
 from joblib import Parallel, delayed
 from tqdm import tqdm
 from itertools import product
+from numpy import random
 import os
 import shutil
 
@@ -12,13 +13,17 @@ exp_names = [os.path.splitext(f)[0] for f in os.listdir("./data/")]
 
 if __name__ == "__main__":
 
+    # Set seeds
+    random.seed(42)
+    gum.initRandom(seed=42)
+
     # For any exp...
     for exp in exp_names: 
 
         # Find eps s.t. AUC(eps)~AUC(CN)
-        # conf = [exp, {"ess":1}]
-        # eps = run_idm(conf)
-        eps = 7     ##
+        conf = [exp, {"ess":1}]
+        eps = run_idm(conf)
+        print(f"Eps: {eps}")    ##
 
         # Store GT BN
         gt = gum.loadBN(f"./bns/{exp}.bif")
@@ -55,7 +60,8 @@ if __name__ == "__main__":
                 "cn_probs": cn_probs
             }
         )
-        results.to_csv(f"results/{exp}.csv")
+
+        results.to_csv(f"results/{exp}.csv", index = False)
         
 
     # Experiments (in parallel)

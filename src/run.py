@@ -22,8 +22,8 @@ def run_idm(conf):
     n_ds = 10
     n_bns = 50
     error = np.logspace(-4, 0, 20, endpoint=False)
-    eps_list = np.arange(1, 50, 5)
-    tol = 0.02
+    eps_list = np.arange(1, 50, 2)
+    tol = 0.01
     
     # Init local hyperp.
     exp = conf[0]
