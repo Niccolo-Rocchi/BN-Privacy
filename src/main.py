@@ -1,11 +1,8 @@
 from run import *
 import multiprocessing
 from joblib import Parallel, delayed
-from tqdm import tqdm
-from itertools import product
 from numpy import random
 import os
-import shutil
 
 num_cores = multiprocessing.cpu_count() - 1
 

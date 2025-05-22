@@ -15,17 +15,18 @@ from utils import *
 warnings.filterwarnings('ignore')
 
 # Create directories
-bn_path = "./bns"
+bn_path = "./bns/"
 if os.path.exists(bn_path): shutil.rmtree(bn_path)
 os.makedirs(bn_path)
-data_path = "./data"
+data_path = "./data/"
 if os.path.exists(data_path): shutil.rmtree(data_path)
 os.makedirs(data_path)
-res_path = "./results"
-if not os.path.exists(res_path): os.makedirs(res_path)
+res_path = "./results/"
+if os.path.exists(res_path): shutil.rmtree(res_path)
+os.makedirs(res_path)
 
 # Set experiments hyperparameters
-n_nodes = 12
+n_nodes = 10
 gpop_ss = 2000
 n_exps = 10
 

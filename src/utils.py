@@ -242,10 +242,10 @@ def get_noisy_bn(bn, scale: float):
         joint = bn_ie.jointPosterior(bn.family(node))
 
         # Add noise to P(X, Pa(X)) and normalize
-        noise = np.random.laplace(scale=scale, size=joint.shape)
-        noisy_joint = np.clip(joint.toarray() + noise, a_min=10e-8, a_max=None)
+        noise = np.random.laplace(scale=scale, size=np.prod(joint.shape))
+        noisy_joint = np.clip(joint.toarray().flatten() + noise, a_min=10e-8, a_max=None)
         noisy_joint = noisy_joint / np.sum(noisy_joint)
-        joint.fillWith(noisy_joint.flatten())
+        joint.fillWith(noisy_joint)
 
         # Compute the conditional P(X | Pa(X))
         cond = joint / joint.sumOut(node)

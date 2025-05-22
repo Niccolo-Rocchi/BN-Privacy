@@ -22,7 +22,7 @@ def run_idm(conf):
     n_ds = 10
     n_bns = 50
     error = np.logspace(-4, 0, 20, endpoint=False)
-    eps_list = np.arange(1, 50, 2)
+    eps_list = np.arange(1, 50, 1)
     tol = 0.01
     
     # Init local hyperp.
@@ -145,9 +145,6 @@ def run_idm(conf):
     # Compute Avg(AUC)
     auc_cn = sum(auc_cn_dss) / len(auc_cn_dss)
 
-    # Debug
-    assert(len(auc_cn_dss) == n_ds)
-
     # MIA (Noisy BN)
     e_best = eps_list[-1]
     for eps in eps_list:    # tqdm(eps_list, unit="item", desc="Eps", dynamic_ncols=True)
@@ -199,19 +196,19 @@ def run_idm(conf):
 
                 with open("./results/log.txt", "a") as log: 
                     log.write(f"{exp}: error with sample {ds} (BN noisy, eps: {eps}).\n")
-                    log.write(traceback.format_exc())
+                    # log.write(traceback.format_exc())
 
             
         # Compute Avg(AUC)
         auc_bn = sum(auc_bn_noisy_dss) / n_ds
 
-        # Debug
-        assert(len(auc_bn_noisy_dss) == n_ds)
-
         # Check
         if abs(auc_cn - auc_bn) <= tol:
             e_best = eps
             break
+
+    with open("./results/exp_meta.txt", "a") as m: 
+        m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps}\n")
 
     return exp, e_best
 
