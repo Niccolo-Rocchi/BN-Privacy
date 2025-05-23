@@ -16,14 +16,11 @@ warnings.filterwarnings('ignore')
 def run_idm(conf):
 
     # Init global hyperp.
-    gpop_ss = 2000
-    rpop_ss = 1000
-    pool_ss = 100
     n_ds = 10
     n_bns = 50
     error = np.logspace(-4, 0, 20, endpoint=False)
-    eps_list = np.arange(1, 50, 1)
     tol = 0.01
+    eps_list = conf[2]
     
     # Init local hyperp.
     exp = conf[0]
@@ -31,6 +28,9 @@ def run_idm(conf):
     bn = gum.loadBN(f"./bns/{exp}.bif")
     n_nodes = len(bn.nodes())
     ess = conf[1].get("ess")
+    gpop_ss = len(gpop)
+    rpop_ss = gpop_ss // 2
+    pool_ss = gpop_ss // 4
 
     # Debug
     assert(gpop_ss == gpop.shape[0])
@@ -136,7 +136,7 @@ def run_idm(conf):
             auc_cn_dss.append(auc)
 
         except:
-
+            
             with open("./results/log.txt", "a") as log: 
                 log.write(f"{exp}: error with sample {ds} (CN).\n")
                 # log.write(traceback.format_exc())
@@ -212,13 +212,12 @@ def run_idm(conf):
 
     return exp, e_best
 
-def run_inference_bn(bn):
+def run_inference_bn(bn, evid_list):
     '''
     Notice: `bn` is assumed to be a Naive Bayes model with target variable `T`.
     '''
 
     # Store information
-    n_nodes = bn.size()
     cov = sorted([i for i in bn.names()])
     cov.remove("T")
 
@@ -229,26 +228,24 @@ def run_inference_bn(bn):
     bn_ie = gum.LazyPropagation(bn)
 
     # Compute all combinations of evidence
-    evid_gen = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(1000)]
     mpes = []
-    for e in evid_gen:
+    for e in evid_list:
         evid = dict(zip(cov, e))
         mpe = MPE_bn(bn_ie, "T", evid)
         mpes.append(mpe)
         
     # Debug
-    assert(len(mpes) == len(evid_gen))
+    assert(len(mpes) == len(evid_list))
 
     return mpes
 
-def run_inference_cn(cn):
+def run_inference_cn(cn, evid_list):
     '''
     Notice: `cn` is assumed to be a Naive Bayes model with target variable `T`.
     '''
 
     # Store information
     bn = cn.current_bn()
-    n_nodes = bn.size()
     cov = sorted([i for i in bn.names()])
     cov.remove("T")
 
@@ -259,10 +256,9 @@ def run_inference_cn(cn):
     cn.computeBinaryCPTMinMax()
 
     # Compute all combinations of evidence
-    evid_gen = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(1000)]
     mpes = []
     probs = []
-    for e in evid_gen:
+    for e in evid_list:
         evid = dict(zip(cov, e))
         cn_ie = gum.CNLoopyPropagation(cn)
         mpe, prob = MPE_cn(cn_ie, "T", evid)
@@ -270,13 +266,13 @@ def run_inference_cn(cn):
         probs.append(prob)
         
     # Debug
-    assert(len(mpes) == len(evid_gen))
-    assert(len(probs) == len(evid_gen))
+    assert(len(mpes) == len(evid_list))
+    assert(len(probs) == len(evid_list))
 
     return mpes, probs
 
 
-def run_inferences(exp, eps):
+def run_inferences(exp, eps, ess, evid_list):
 
     # Store GT BN
     gt = gum.loadBN(f"./bns/{exp}.bif")
@@ -291,17 +287,17 @@ def run_inferences(exp, eps):
     bn_copy = gum.BayesNet(bn)
     add_counts(bn_copy, gpop)
     cn = gum.CredalNet(bn_copy)
-    cn.idmLearning(1)
+    cn.idmLearning(ess)
 
     # Learn noisy BN 
     scale = (2 * bn.size()) / (len(gpop) * eps)
     bn_noisy = get_noisy_bn(bn, scale)
 
     # Run inferences
-    gt_mpes = run_inference_bn(gt)
-    bn_mpes = run_inference_bn(bn)
-    bn_noisy_mpes = run_inference_bn(bn_noisy)
-    cn_mpes, cn_probs = run_inference_cn(cn)
+    gt_mpes = run_inference_bn(gt, evid_list)
+    bn_mpes = run_inference_bn(bn, evid_list)
+    bn_noisy_mpes = run_inference_bn(bn_noisy, evid_list)
+    cn_mpes, cn_probs = run_inference_cn(cn, evid_list)
 
     # Save results
     results = pd.DataFrame(
