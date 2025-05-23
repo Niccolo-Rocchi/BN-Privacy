@@ -229,7 +229,7 @@ def run_inference_bn(bn):
     bn_ie = gum.LazyPropagation(bn)
 
     # Compute all combinations of evidence
-    evid_gen = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(100)]
+    evid_gen = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(1000)]
     mpes = []
     for e in evid_gen:
         evid = dict(zip(cov, e))
@@ -259,7 +259,7 @@ def run_inference_cn(cn):
     cn.computeBinaryCPTMinMax()
 
     # Compute all combinations of evidence
-    evid_gen = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(100)]
+    evid_gen = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(1000)]
     mpes = []
     probs = []
     for e in evid_gen:
