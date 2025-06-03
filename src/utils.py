@@ -243,7 +243,7 @@ def get_noisy_bn(bn, scale: float):
 
         # Add noise to P(X, Pa(X)) and normalize
         noise = np.random.laplace(scale=scale, size=np.prod(joint.shape))
-        noisy_joint = np.clip(joint.toarray().flatten() + noise, a_min=10e-8, a_max=None)
+        noisy_joint = np.clip(joint.toarray().flatten() + noise, a_min=10e-10, a_max=None)
         noisy_joint = noisy_joint / np.sum(noisy_joint)
         joint.fillWith(noisy_joint)
 
@@ -259,15 +259,17 @@ def get_noisy_bn(bn, scale: float):
     return bn_noisy
 
 # MPE function for BN
-def MPE_bn(bn_ie: gum.LazyPropagation, target: str, evid: dict):
+def MPE_bn(bn_ie: gum.LazyPropagation, target: str, evid: dict) -> tuple:
 
     # Set evidence
     bn_ie.setEvidence(evid)
 
-    # Compute MPE
-    mpe = bn_ie.mpe()
+    # Compute MPE and log(prob)
+    out = bn_ie.mpeLog2Posterior()
+    mpe = out[0].todict().get(target)
+    prob = np.exp2(out[1])
 
-    return mpe.todict().get(target)
+    return mpe, prob
 
 # Get a value from a BN's CPT
 def get_cond(bn: gum.BayesNet, X: str, x: float, parents: dict = None) -> float:
@@ -348,4 +350,101 @@ def MPE_cn_pyagrum(cn_ie: gum.CNLoopyPropagation, target: str, evid: dict):
     prob = marg[1]
 
     return mpe, prob
+
+# Run inferences on a BN (by using pyagrum)
+def run_inference_bn(bn, evid_list):
+    '''
+    Notice: `bn` is assumed to be a Naive Bayes model with target variable `T`.
+    '''
+
+    # Store information
+    cov = sorted([i for i in bn.names()])
+    cov.remove("T")
+
+    # Debug
+    assert(len(cov) == bn.size() - 1)
+
+    # Create object for inference
+    bn_ie = gum.LazyPropagation(bn)
+
+    # Compute all combinations of evidence
+    mpes = []
+    probs = []
+    for e in evid_list:
+        evid = dict(zip(cov, e))
+        mpe, prob = MPE_bn(bn_ie, "T", evid)
+        mpes.append(mpe)
+        probs.append(prob)
+        
+    # Debug
+    assert(len(mpes) == len(evid_list))
+    assert(len(probs) == len(evid_list))
+
+    return mpes, probs
+
+# Run inferences on a CN (without using pyagrum)
+def run_inference_cn(cn, evid_list):
+
+    '''
+    Notice: `cn` is assumed to be a binary Naive Bayes model with target variable `T`.
+    '''
+
+    # Store information
+    cn.saveBNsMinMax("bn_min.bif", "bn_max.bif")
+    bn_min = gum.loadBN("bn_min.bif")
+    bn_max = gum.loadBN("bn_max.bif")
+    cov = sorted([i for i in bn_min.names()])
+    cov.remove("T")
+
+    # Debug
+    assert(len(cov) == bn_min.size() - 1)
+
+    # Compute all combinations of evidence
+    mpes = []
+    probs = []
+    for e in evid_list:
+        evid = dict(zip(cov, e))
+        mpe, prob = MPE_cn(bn_min, bn_max, "T", evid)
+        mpes.append(mpe)
+        probs.append(prob)
+        
+    # Debug
+    assert(len(mpes) == len(evid_list))
+    assert(len(probs) == len(evid_list))
+
+    return mpes, probs
+
+# Run inferences on a CN (by using pyagrum)
+def run_inference_cn_pyagrum(cn, evid_list):
+    
+    '''
+    Notice: `cn` is assumed to be a Naive Bayes model with target variable `T`.
+    '''
+
+    # Store information
+    bn = cn.current_bn()
+    cov = sorted([i for i in bn.names()])
+    cov.remove("T")
+
+    # Debug
+    assert(len(cov) == bn.size() - 1)
+
+    # Create object for inference
+    cn.computeBinaryCPTMinMax()
+
+    # Compute all combinations of evidence
+    mpes = []
+    probs = []
+    for e in evid_list:
+        evid = dict(zip(cov, e))
+        cn_ie = gum.CNLoopyPropagation(cn)
+        mpe, prob = MPE_cn_pyagrum(cn_ie, "T", evid)
+        mpes.append(mpe)
+        probs.append(prob)
+        
+    # Debug
+    assert(len(mpes) == len(evid_list))
+    assert(len(probs) == len(evid_list))
+
+    return mpes, probs
             

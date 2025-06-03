@@ -212,100 +212,6 @@ def run_idm(conf):
 
     return exp, e_best
 
-def run_inference_bn(bn, evid_list):
-    '''
-    Notice: `bn` is assumed to be a Naive Bayes model with target variable `T`.
-    '''
-
-    # Store information
-    cov = sorted([i for i in bn.names()])
-    cov.remove("T")
-
-    # Debug
-    assert(len(cov) == bn.size() - 1)
-
-    # Create object for inference
-    bn_ie = gum.LazyPropagation(bn)
-
-    # Compute all combinations of evidence
-    mpes = []
-    for e in evid_list:
-        evid = dict(zip(cov, e))
-        mpe = MPE_bn(bn_ie, "T", evid)
-        mpes.append(mpe)
-        
-    # Debug
-    assert(len(mpes) == len(evid_list))
-
-    return mpes
-
-# Without using pyagrum
-def run_inference_cn(cn, evid_list):
-
-    '''
-    Notice: `cn` is assumed to be a binary Naive Bayes model with target variable `T`.
-    '''
-
-    # Store information
-    cn.saveBNsMinMax("bn_min.bif", "bn_max.bif")
-    bn_min = gum.loadBN("bn_min.bif")
-    bn_max = gum.loadBN("bn_max.bif")
-    cov = sorted([i for i in bn_min.names()])
-    cov.remove("T")
-
-    # Debug
-    assert(len(cov) == bn_min.size() - 1)
-
-    # Compute all combinations of evidence
-    mpes = []
-    probs = []
-    for e in evid_list:
-        evid = dict(zip(cov, e))
-        mpe, prob = MPE_cn(bn_min, bn_max, "T", evid)
-        mpes.append(mpe)
-        probs.append(prob)
-        
-    # Debug
-    assert(len(mpes) == len(evid_list))
-    assert(len(probs) == len(evid_list))
-
-    return mpes, probs
-
-# Using pyagrum
-def run_inference_cn_pyagrum(cn, evid_list):
-    
-    '''
-    Notice: `cn` is assumed to be a Naive Bayes model with target variable `T`.
-    '''
-
-    # Store information
-    bn = cn.current_bn()
-    cov = sorted([i for i in bn.names()])
-    cov.remove("T")
-
-    # Debug
-    assert(len(cov) == bn.size() - 1)
-
-    # Create object for inference
-    cn.computeBinaryCPTMinMax()
-
-    # Compute all combinations of evidence
-    mpes = []
-    probs = []
-    for e in evid_list:
-        evid = dict(zip(cov, e))
-        cn_ie = gum.CNLoopyPropagation(cn)
-        mpe, prob = MPE_cn_pyagrum(cn_ie, "T", evid)
-        mpes.append(mpe)
-        probs.append(prob)
-        
-    # Debug
-    assert(len(mpes) == len(evid_list))
-    assert(len(probs) == len(evid_list))
-
-    return mpes, probs
-
-
 def run_inferences(exp, eps, ess, evid_list):
 
     # Store GT BN
@@ -329,8 +235,8 @@ def run_inferences(exp, eps, ess, evid_list):
 
     # Run inferences
     gt_mpes = run_inference_bn(gt, evid_list)
-    bn_mpes = run_inference_bn(bn, evid_list)
-    bn_noisy_mpes = run_inference_bn(bn_noisy, evid_list)
+    bn_mpes, bn_probs = run_inference_bn(bn, evid_list)
+    bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, evid_list)
     cn_mpes, cn_probs = run_inference_cn(cn, evid_list)
 
     # Save results
@@ -338,7 +244,9 @@ def run_inferences(exp, eps, ess, evid_list):
         {
             "gt_mpes": gt_mpes, 
             "bn_mpes": bn_mpes,
+            "bn_probs": bn_probs,
             "bn_noisy_mpes": bn_noisy_mpes,
+            "bn_noisy_probs": bn_noisy_probs,
             "cn_mpes": cn_mpes, 
             "cn_probs": cn_probs
         }
