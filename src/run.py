@@ -239,7 +239,41 @@ def run_inference_bn(bn, evid_list):
 
     return mpes
 
+# Without using pyagrum
 def run_inference_cn(cn, evid_list):
+
+    '''
+    Notice: `cn` is assumed to be a binary Naive Bayes model with target variable `T`.
+    '''
+
+    # Store information
+    cn.saveBNsMinMax("bn_min.bif", "bn_max.bif")
+    bn_min = gum.loadBN("bn_min.bif")
+    bn_max = gum.loadBN("bn_max.bif")
+    cov = sorted([i for i in bn_min.names()])
+    cov.remove("T")
+
+    # Debug
+    assert(len(cov) == bn_min.size() - 1)
+
+    # Compute all combinations of evidence
+    mpes = []
+    probs = []
+    for e in evid_list:
+        evid = dict(zip(cov, e))
+        mpe, prob = MPE_cn(bn_min, bn_max, "T", evid)
+        mpes.append(mpe)
+        probs.append(prob)
+        
+    # Debug
+    assert(len(mpes) == len(evid_list))
+    assert(len(probs) == len(evid_list))
+
+    return mpes, probs
+
+# Using pyagrum
+def run_inference_cn_pyagrum(cn, evid_list):
+    
     '''
     Notice: `cn` is assumed to be a Naive Bayes model with target variable `T`.
     '''
@@ -261,7 +295,7 @@ def run_inference_cn(cn, evid_list):
     for e in evid_list:
         evid = dict(zip(cov, e))
         cn_ie = gum.CNLoopyPropagation(cn)
-        mpe, prob = MPE_cn(cn_ie, "T", evid)
+        mpe, prob = MPE_cn_pyagrum(cn_ie, "T", evid)
         mpes.append(mpe)
         probs.append(prob)
         
