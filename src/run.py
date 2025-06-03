@@ -136,10 +136,13 @@ def run_idm(conf):
             auc_cn_dss.append(auc)
 
         except:
-            
-            with open("./results/log.txt", "a") as log: 
-                log.write(f"{exp}: error with sample {ds} (CN).\n")
-                # log.write(traceback.format_exc())
+
+            continue
+
+            # Debug
+            # with open("./results/log.txt", "a") as log: 
+            #     log.write(f"{exp}: error with sample {ds} (CN).\n")
+            #     log.write(traceback.format_exc())
 
             
     # Compute Avg(AUC)
@@ -194,9 +197,12 @@ def run_idm(conf):
 
             except:
 
-                with open("./results/log.txt", "a") as log: 
-                    log.write(f"{exp}: error with sample {ds} (BN noisy, eps: {eps}).\n")
-                    # log.write(traceback.format_exc())
+                continue
+
+                # Debug
+                # with open("./results/log.txt", "a") as log: 
+                #     log.write(f"{exp}: error with sample {ds} (BN noisy, eps: {eps}).\n")
+                #     log.write(traceback.format_exc())
 
             
         # Compute Avg(AUC)
@@ -234,10 +240,10 @@ def run_inferences(exp, eps, ess, evid_list):
     bn_noisy = get_noisy_bn(bn, scale)
 
     # Run inferences
-    gt_mpes = run_inference_bn(gt, evid_list)
+    gt_mpes, _ = run_inference_bn(gt, evid_list)
     bn_mpes, bn_probs = run_inference_bn(bn, evid_list)
     bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, evid_list)
-    cn_mpes, cn_probs = run_inference_cn(cn, evid_list)
+    cn_mpes, cn_probs = run_inference_cn(cn, evid_list, exp)
 
     # Save results
     results = pd.DataFrame(
@@ -252,7 +258,7 @@ def run_inferences(exp, eps, ess, evid_list):
         }
     )
 
-    results.to_csv(f"results/{exp}-eps{eps}.csv", index = False)
+    results.to_csv(f"results/{exp}.csv", index = False)
 
 
 

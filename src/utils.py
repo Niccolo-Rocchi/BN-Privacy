@@ -333,9 +333,9 @@ def MPE_cn(bn_min:gum.BayesNet, bn_max:gum.BayesNet, T: str, children: dict) -> 
     lp0 = get_lower_posterior(bn_min, bn_max, T, 0, children)
 
     if lp1 > lp0:
-        return (1, lp1)
+        return (1, math.exp(lp1))
     else:
-        return (0, lp0)
+        return (0, math.exp(lp0))
     
 # MPE function for CN (using pyagrum)
 def MPE_cn_pyagrum(cn_ie: gum.CNLoopyPropagation, target: str, evid: dict):
@@ -383,16 +383,16 @@ def run_inference_bn(bn, evid_list):
     return mpes, probs
 
 # Run inferences on a CN (without using pyagrum)
-def run_inference_cn(cn, evid_list):
+def run_inference_cn(cn, evid_list, exp: str):
 
     '''
     Notice: `cn` is assumed to be a binary Naive Bayes model with target variable `T`.
     '''
 
     # Store information
-    cn.saveBNsMinMax("bn_min.bif", "bn_max.bif")
-    bn_min = gum.loadBN("bn_min.bif")
-    bn_max = gum.loadBN("bn_max.bif")
+    cn.saveBNsMinMax(f"tmp/bn_min_{exp}.bif", f"tmp/bn_max_{exp}.bif")
+    bn_min = gum.loadBN(f"tmp/bn_min_{exp}.bif")
+    bn_max = gum.loadBN(f"tmp/bn_max_{exp}.bif")
     cov = sorted([i for i in bn_min.names()])
     cov.remove("T")
 

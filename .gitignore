@@ -2,6 +2,7 @@ venv/
 results*
 bns/
 data/
+tmp/
 *.bif
 *.pyc
 *.txt

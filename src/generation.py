@@ -24,10 +24,12 @@ os.makedirs(data_path)
 res_path = "./results/"
 if os.path.exists(res_path): shutil.rmtree(res_path)
 os.makedirs(res_path)
+if os.path.exists("tmp"): shutil.rmtree("tmp")
+os.makedirs("tmp")
 
 # Set experiments hyperparameters
 n_nodes = 10
-gpop_ss = 2000
+gpop_ss = 1000
 n_exps = 10
 
 # Set BN (NB) structure
