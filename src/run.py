@@ -14,25 +14,25 @@ from utils import *
 warnings.filterwarnings('ignore')
 
 # Run local IDM experiment
-def run_idm(conf):
+def run_idm(exp, conf):
 
     # Set seeds
     random.seed(42)
     gum.initRandom(seed=42)
 
-    # Init global hyperp.
-    n_ds = 20
-    n_bns = 50
-    error = np.logspace(-4, 0, 20, endpoint=False)
-    tol = 0.01
-    eps_list = conf[2]
+    # Init hyperp.
+    ess = conf["ess"]
+    eps_list = conf["eps_list"]
+    results_path = conf["results_path"]
+    n_ds = conf["n_ds"]
+    n_bns = conf["n_bns"]
+    error = conf["error"]
+    tol = conf["tol"]
     
-    # Init local hyperp.
-    exp = conf[0]
+    # Read data
     gpop = pd.read_csv(f"./data/{exp}.csv")
     bn = gum.loadBN(f"./bns/{exp}.bif")
     n_nodes = len(bn.nodes())
-    ess = conf[1].get("ess")
     gpop_ss = len(gpop)
     rpop_ss = gpop_ss // 2
     pool_ss = gpop_ss // 4
@@ -145,7 +145,7 @@ def run_idm(conf):
             continue
 
             # Debug
-            # with open("./results/log.txt", "a") as log: 
+            # with open(f"{results_path}/log.txt", "a") as log: 
             #     log.write(f"{exp}: error with sample {ds} (CN).\n")
             #     log.write(traceback.format_exc())
 
@@ -205,7 +205,7 @@ def run_idm(conf):
                 continue
 
                 # Debug
-                # with open("./results/log.txt", "a") as log: 
+                # with open(f"{results_path}/log.txt", "a") as log: 
                 #     log.write(f"{exp}: error with sample {ds} (BN noisy, eps: {eps}).\n")
                 #     log.write(traceback.format_exc())
 
@@ -218,12 +218,12 @@ def run_idm(conf):
             e_best = eps
             break
 
-    with open("./results/exp_meta.txt", "a") as m: 
+    with open(f"{results_path}/exp_meta.txt", "a") as m: 
         m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps}\n")
 
     return exp, e_best
 
-def run_inferences(exp, eps, ess, evid_list):
+def run_inferences(exp, eps, ess, evid_list, results_path):
 
     # Set seeds
     random.seed(42)
@@ -268,7 +268,7 @@ def run_inferences(exp, eps, ess, evid_list):
         }
     )
 
-    results.to_csv(f"results/{exp}.csv", index = False)
+    results.to_csv(f"{results_path}/{exp}.csv", index = False)
 
 
 

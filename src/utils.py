@@ -227,6 +227,16 @@ def add_counts(bn, data):
         
     return
 
+# Compact a dictionary to be printable
+def compact_dict(d):
+    new_dict = dict()
+    for k, v in d.items():
+        if isinstance(v, np.ndarray):
+            new_dict[k] = f"np.ndarray: [{v[0]:.2g}, {v[1]:.2g}, ..., {v[-1]:.2g}], length={len(v)}"
+        else:
+            new_dict[k] = v
+    return new_dict
+
 # Create noisy bn (Zhang et al., 2017)
 def get_noisy_bn(bn, scale: float):
 
