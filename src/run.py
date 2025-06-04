@@ -7,6 +7,7 @@ from scipy.stats import norm
 from sklearn import metrics
 import pyagrum as gum
 from tqdm import tqdm
+from numpy import random
 
 from utils import *
 
@@ -15,8 +16,12 @@ warnings.filterwarnings('ignore')
 # Run local IDM experiment
 def run_idm(conf):
 
+    # Set seeds
+    random.seed(42)
+    gum.initRandom(seed=42)
+
     # Init global hyperp.
-    n_ds = 10
+    n_ds = 20
     n_bns = 50
     error = np.logspace(-4, 0, 20, endpoint=False)
     tol = 0.01
@@ -220,6 +225,10 @@ def run_idm(conf):
 
 def run_inferences(exp, eps, ess, evid_list):
 
+    # Set seeds
+    random.seed(42)
+    gum.initRandom(seed=42)
+
     # Store GT BN
     gt = gum.loadBN(f"./bns/{exp}.bif")
     gpop = pd.read_csv(f"./data/{exp}.csv")
@@ -243,7 +252,7 @@ def run_inferences(exp, eps, ess, evid_list):
     gt_mpes, _ = run_inference_bn(gt, evid_list)
     bn_mpes, bn_probs = run_inference_bn(bn, evid_list)
     bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, evid_list)
-    cn_mpes, cn_probs = run_inference_cn(cn, evid_list, exp)
+    cn_mpes, cn_probs, cn_probs_alt = run_inference_cn(cn, evid_list, exp)
 
     # Save results
     results = pd.DataFrame(
@@ -254,7 +263,8 @@ def run_inferences(exp, eps, ess, evid_list):
             "bn_noisy_mpes": bn_noisy_mpes,
             "bn_noisy_probs": bn_noisy_probs,
             "cn_mpes": cn_mpes, 
-            "cn_probs": cn_probs
+            "cn_probs": cn_probs,
+            "cn_probs_alt": cn_probs_alt
         }
     )
 

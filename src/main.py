@@ -13,13 +13,13 @@ confs = [(exp, {"ess":ess}, eps_list) for exp in exp_names]
 
 bn = gum.loadBN("./bns/exp0.bif")
 n_nodes = bn.size()
-evid_list = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(1000)]
 
 if __name__ == "__main__":
 
-        # Set seeds
+        # Set seeds and generate evidence list for inferences
         random.seed(42)
         gum.initRandom(seed=42)
+        evid_list = [random_product(*((0,1) for _ in range(n_nodes - 1))) for _ in range(1000)]
 
         # Track
         with open("./results/exp_meta.txt", "a") as m: 

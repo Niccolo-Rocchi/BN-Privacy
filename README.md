@@ -16,7 +16,7 @@ Create and activate a Python virtual environment. Then, install the required pac
 3. Results available in: `results/`.
 
 ## Plot results
-Run the `Plot_results.ipynb` notebook. You should be able to choose which experiments to plot.
+Use the `Plot_results.ipynb` notebook.
 
 ## How to update all Python packages
-Run: `pip install --upgrade $(pip freeze | cut -d '=' -f 1)` to upgrade, and `pip freeze > requirements.txt` to update the requirements file.
+Run: `pip install --upgrade $(pip freeze | cut -d '=' -f 1)` to upgrade the packages, then `pip freeze > requirements.txt` to update the requirements file.
