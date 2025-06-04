@@ -289,7 +289,7 @@ def get_cond(bn: gum.BayesNet, X: str, x: float, parents: dict = None) -> float:
         for var in parents.keys():
             inst[var] = parents[var]
             
-    return cpt.get(inst)
+    return max(cpt.get(inst), 1e-10)    # Smoothing
 
 # Get a Naive Bayes log-joint
 def get_NB_log_joint(bn: gum.BayesNet, T: str, t: float, children: dict) -> float:

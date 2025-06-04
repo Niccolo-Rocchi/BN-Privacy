@@ -6,8 +6,8 @@ import os
 
 num_cores = multiprocessing.cpu_count() - 1
 
-ess = 1
-eps_list = np.arange(0.5, 30, 0.5)
+ess = 45
+eps_list = np.arange(1e-5, 1e-3, 1e-5)
 exp_names = [os.path.splitext(f)[0] for f in os.listdir("./data/")]
 confs = [(exp, {"ess":ess}, eps_list) for exp in exp_names]
 
