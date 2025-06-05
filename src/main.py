@@ -13,9 +13,9 @@ ess_dict = {
         1: np.arange(0.1, 10, 0.1), 
         10: np.arange(0.1, 10, 0.1),
         20: np.arange(0.05, 5, 0.05),
-        30: np.arange(5e-4, 5e-2, 5e-4), 
-        40: np.arange(1e-5, 1e-3, 1e-5), 
-        50: np.arange(1e-6, 1e-4, 1e-6)
+        30: np.arange(5e-4, 1e-1, 5e-4), 
+        40: np.arange(1e-5, 5e-2, 1e-5), 
+        50: np.arange(1e-6, 5e-3, 1e-6)
 }
 
 # Initilize hyperparameters given ess
@@ -24,14 +24,14 @@ def get_conf(ess):
         n_nodes = gum.loadBN("./bns/exp0.bif").size()
         
         return  {
-                "n_nodes": n_nodes,                                     # Actual number of BN nodes
-                "ess": ess,                                             # Actual ess (or S).
-                "eps_list": ess_dict[ess],                              # Range of eps considered, related to the actual ess.
+                "n_nodes": n_nodes,                                             # Actual number of BN nodes
+                "ess": ess,                                                     # Actual ess (or S).
+                "eps_list": ess_dict[ess],                                      # Range of eps considered, related to the actual ess.
                 "results_path": f"./results/results_nodes{n_nodes}_ess{ess}",   # Actual results path, related to the actual ess.
-                "n_ds": 20,                                             # Number of data subsamples for `run_idm`.
-                "n_bns": 50,                                            # Number of BNs to evaluate within the CN for `run_idm`.
-                "error": np.logspace(-4, 0, 25, endpoint=False),        # Type-I errors for `run_idm`.
-                "tol": 0.01,                                            # To find eps s.t. |AUC(eps) - AUC(CN)| < tol.
+                "n_ds": 20,                                                     # Number of data subsamples for `run_idm`.
+                "n_bns": 50,                                                    # Number of BNs to evaluate within the CN for `run_idm`.
+                "error": np.logspace(-4, 0, 25, endpoint=False),                # Type-I errors for `run_idm`.
+                "tol": 0.01,                                                    # To find eps s.t. |AUC(eps) - AUC(CN)| < tol.
         }
 
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
                 # Tracking
                 file = Path(f"{conf['results_path']}/exp_meta.txt")
                 file.parent.mkdir(parents=True, exist_ok=True)
-                with open(file, "w") as f: f.write(pformat(compact_dict(conf)) + "\n\n" + "#"*50)
+                with open(file, "w") as f: f.write(pformat(compact_dict(conf)) + "\n\n" + "#"*50 + "\n\n")
 
                 # Find eps (for any exp, in parallel)
                 res = Parallel(n_jobs=num_cores)(delayed(run_idm)(exp, conf) for exp in [os.path.splitext(f)[0] for f in os.listdir("./data/")])

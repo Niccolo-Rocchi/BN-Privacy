@@ -30,7 +30,7 @@ os.makedirs("tmp")
 # Set experiments hyperparameters
 n_nodes = 10
 gpop_ss = 1000
-n_exps = 10
+n_exps = 50
 
 # Set BN (NB) structure
 bn_str_gen = (f"T->X{i}" for i in range(n_nodes -1))
