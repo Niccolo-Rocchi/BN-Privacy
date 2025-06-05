@@ -13,9 +13,9 @@ ess_dict = {
         1: np.arange(0.1, 10, 0.1), 
         10: np.arange(0.1, 10, 0.1),
         20: np.arange(0.05, 5, 0.05),
-        30: np.arange(5e-4, 1e-1, 5e-4), 
-        40: np.arange(1e-5, 5e-2, 1e-5), 
-        50: np.arange(1e-6, 5e-3, 1e-6)
+        30: np.arange(1e-3, 5e-1, 1e-3), 
+        40: np.arange(1e-5, 5e-3, 1e-5), 
+        50: np.arange(1e-6, 5e-4, 1e-6)
 }
 
 # Initilize hyperparameters given ess
