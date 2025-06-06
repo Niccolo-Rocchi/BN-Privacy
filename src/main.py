@@ -13,9 +13,9 @@ ess_dict = {
         1: np.arange(0.1, 10, 0.1), 
         10: np.arange(0.1, 10, 0.1),
         20: np.arange(0.05, 5, 0.05),
-        30: np.arange(1e-3, 5e-1, 1e-3), 
-        40: np.arange(1e-5, 5e-3, 1e-5), 
-        50: np.arange(1e-6, 5e-4, 1e-6)
+        30: np.arange(1e-3, 1, 1e-3),
+        40: np.arange(5e-6, 1e-2, 5e-6), 
+        50: np.arange(5e-7, 5e-4, 5e-7)
 }
 
 # Initilize hyperparameters given ess
@@ -28,7 +28,7 @@ def get_conf(ess):
                 "ess": ess,                                                     # Actual ess (or S).
                 "eps_list": ess_dict[ess],                                      # Range of eps considered, related to the actual ess.
                 "results_path": f"./results/results_nodes{n_nodes}_ess{ess}",   # Actual results path, related to the actual ess.
-                "n_ds": 20,                                                     # Number of data subsamples for `run_idm`.
+                "n_ds": 30,                                                     # Number of data subsamples for `run_idm`.
                 "n_bns": 50,                                                    # Number of BNs to evaluate within the CN for `run_idm`.
                 "error": np.logspace(-4, 0, 25, endpoint=False),                # Type-I errors for `run_idm`.
                 "tol": 0.01,                                                    # To find eps s.t. |AUC(eps) - AUC(CN)| < tol.
