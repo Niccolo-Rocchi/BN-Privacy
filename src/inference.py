@@ -2,12 +2,15 @@ import pandas as pd
 from scipy.stats import norm
 import pyagrum as gum
 from numpy import random
+from tempfile import TemporaryDirectory
 
 from src.utils import *
 from src.config import *
 
 
 def run_inferences(exp, eps, ess, config):
+
+    root_path = get_root_path()
 
     # Set seed
     set_global_seed(config["seed"])
@@ -16,8 +19,8 @@ def run_inferences(exp, eps, ess, config):
     evid_vec = [random_product(*((0,1) for _ in range(config["n_nodes"] - 1))) for _ in range(config["n_infer"])]
 
     # Store ground-truth BN
-    gt = gum.loadBN(f"./bns/{exp}.bif")
-    gpop = pd.read_csv(f"./data/{exp}.csv")
+    gt = gum.loadBN(f'{root_path / config["bns_path"]}/{exp}.bif')
+    gpop = pd.read_csv(f'{root_path / config["data_path"]}/{exp}.csv')
 
     # Learn BN from gpop
     bn_learner=gum.BNLearner(gpop)
@@ -54,8 +57,7 @@ def run_inferences(exp, eps, ess, config):
         }
     )
 
-    root_dir = get_root_dir()
-    dir = root_dir / config["results_dir"] / f'results_nodes{config["n_nodes"]}_ess{ess}'
+    dir = root_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}'
     results.to_csv(f"{dir}/{exp}.csv", index = False)
 
 # MPE function for BN
@@ -177,9 +179,10 @@ def run_inference_cn(cn, evid_vec, exp: str):
     '''
 
     # Store information
-    cn.saveBNsMinMax(f"tmp/bn_min_{exp}.bif", f"tmp/bn_max_{exp}.bif")
-    bn_min = gum.loadBN(f"tmp/bn_min_{exp}.bif")
-    bn_max = gum.loadBN(f"tmp/bn_max_{exp}.bif")
+    with TemporaryDirectory() as tmp_path:
+        cn.saveBNsMinMax(f"{tmp_path}/bn_min_{exp}.bif", f"{tmp_path}/bn_max_{exp}.bif")
+        bn_min = gum.loadBN(f"{tmp_path}/bn_min_{exp}.bif")
+        bn_max = gum.loadBN(f"{tmp_path}/bn_max_{exp}.bif")
     cov = sorted([i for i in bn_min.names()])
     cov.remove("T")
 

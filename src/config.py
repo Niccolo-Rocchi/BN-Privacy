@@ -19,7 +19,7 @@ def set_global_seed(seed):
     gum.initRandom(seed)
 
 # Get root directory
-def get_root_dir():
+def get_root_path():
     return Path(__file__).resolve().parents[1]
 
 # Create an empty directory

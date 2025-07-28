@@ -3,6 +3,8 @@ bns/
 data/
 Notebooks/
 results*
+.pytest*
 venv/
 tmp/
+plots/
 

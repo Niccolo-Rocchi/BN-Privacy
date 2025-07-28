@@ -74,16 +74,16 @@ def get_eps(exp, ess, config):
 
     # Init hyperp.
     eps_vec = eval(config["ess_dict"][ess])
-    results_dir = config["results_dir"]
+    results_path = config["results_path"]
     n_samples = config["n_samples"]
     n_bns = config["n_bns"]
     error = eval(config["error"])
     tol = config["tol"]
     
     # Read data
-    root_dir = get_root_dir()
-    gpop = pd.read_csv(f'{root_dir / config["data_dir"]}/{exp}.csv')
-    bn = gum.loadBN(f'{root_dir / config["bns_dir"]}/{exp}.bif')
+    root_path = get_root_path()
+    gpop = pd.read_csv(f'{root_path / config["data_path"]}/{exp}.csv')
+    bn = gum.loadBN(f'{root_path / config["bns_path"]}/{exp}.bif')
     n_nodes = config["n_nodes"]
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])
@@ -156,7 +156,7 @@ def get_eps(exp, ess, config):
         except:
 
             # Debug
-            with open(f"{results_dir}/log.txt", "a") as log: 
+            with open(f"{results_path}/log.txt", "a") as log: 
                 log.write(f"{exp}: error with sample {sample} (CN).\n")
                 log.write(traceback.format_exc())
      
@@ -189,7 +189,7 @@ def get_eps(exp, ess, config):
             except:
 
                 # Debug
-                with open(f"{results_dir}/log.txt", "a") as log: 
+                with open(f"{results_path}/log.txt", "a") as log: 
                     log.write(f"{exp}: error with sample {sample} (BN noisy, eps: {eps}).\n")
                     log.write(traceback.format_exc())
 
@@ -202,12 +202,10 @@ def get_eps(exp, ess, config):
             e_best = eps
             break
 
-    root_dir = get_root_dir()
-    meta_file_path = root_dir / config["results_dir"] / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
+    meta_file_path = root_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
     with open(meta_file_path, "a") as m: 
         m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps}\n")
 
     return exp, e_best
-
 
 

@@ -1,11 +1,10 @@
 ### Configuration file
 
 ## Paths
-bns_dir: bns                                        # Where to save ground-truth BNs
-data_dir: data                                      # Where to save data as generated from ground-truth BNs
-results_dir: results                                # Where to save the experiment results
-tmp_dir: tmp                                        # Temporary directory
-meta_file: exp_meta.txt                             # File of metadata
+bns_path: test/bns                                   # Where to save ground-truth BNs
+data_path: test/data                                 # Where to save data as generated from ground-truth BNs
+results_path: test/results                           # Where to save the experiment results
+meta_file: exp_meta.txt                              # File of metadata
 
 ## Models
 n_nodes: 10                                         # Number of nodes for each BN (Naive Bayes) model
