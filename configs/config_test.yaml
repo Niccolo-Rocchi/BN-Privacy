@@ -1,0 +1,37 @@
+### Configuration file
+
+## Paths
+bns_dir: bns                                        # Where to save ground-truth BNs
+data_dir: data                                      # Where to save data as generated from ground-truth BNs
+results_dir: results                                # Where to save the experiment results
+tmp_dir: tmp                                        # Temporary directory
+meta_file: exp_meta.txt                             # File of metadata
+
+## Models
+n_nodes: 10                                         # Number of nodes for each BN (Naive Bayes) model
+n_exps: 5                                           # Number of models to evaluate
+
+## Data
+gpop_ss: 1000                                       # Sample size of general population
+rpop_prop: 0.5                                      # Sample size of reference population = gpop_ss * rpop_prop
+pool_prop: 0.25                                     # Sample size of pool population = gpop_ss * pool_prop
+
+## MIA
+n_samples: 5                                        # Number of data samples
+n_bns: 10                                           # Number of BNs to sample within the CN
+tol: 0.02                                           # To find eps s.t. |AUC(eps) - AUC(CN)| < tol
+error: 'np.logspace(-4, 0, 10, endpoint=False)'     # Type-I errors vector
+ess_dict:                                           # Eps list to evaluate for each ess
+  1:  'np.arange(0.1, 10, 0.5)'
+  10: 'np.arange(0.1, 10, 0.5)'
+  20: 'np.arange(0.05, 5, 0.1)'
+  30: 'np.arange(1e-3, 1, 5e-3)'
+  40: 'np.arange(5e-6, 1e-2, 1e-5)' 
+  50: 'np.arange(5e-7, 5e-4, 1e-6)'
+
+## Inferences
+n_infer: 10                                         # Number of inferences to perform
+
+## Other
+seed: 42                                            # Global seed
+num_cores: 'multiprocessing.cpu_count() - 1'        # Number of threads to use for parallelization

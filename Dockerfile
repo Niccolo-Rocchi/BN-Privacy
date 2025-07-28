@@ -1,10 +1,10 @@
-FROM python:3.11-bookworm
+FROM python:bookworm
 
 WORKDIR /workspace
 COPY . .
 
-RUN python -m pip install --upgrade pip
-RUN if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
-RUN python src/generation.py
+RUN pip install --upgrade pip
+RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+RUN python -m scripts.generate_data
 
 CMD /bin/sh
