@@ -10,3 +10,4 @@ tmp/
 .pytest*
 __pycache__
 plots/
+bin/

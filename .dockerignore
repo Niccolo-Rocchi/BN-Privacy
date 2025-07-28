@@ -7,4 +7,5 @@ results*
 venv/
 tmp/
 plots/
+bin/
 
