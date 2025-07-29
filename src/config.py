@@ -22,6 +22,14 @@ def set_global_seed(seed):
 def get_root_path():
     return Path(__file__).resolve().parents[1]
 
+# Get base path 
+def get_base_path(config):
+
+    root_path = get_root_path()
+    base_path = config["base_path"]
+
+    return root_path / base_path
+
 # Create an empty directory
 def create_clean_dir(path: Path):
 

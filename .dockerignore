@@ -1,11 +1,5 @@
+venv
+output
+bin
 __pycache__
-bns/
-data/
-Notebooks/
-results*
-.pytest*
-venv/
-tmp/
-plots/
-bin/
-
+.pytest_cache

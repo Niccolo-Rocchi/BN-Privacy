@@ -69,21 +69,23 @@ def get_maxll_bn(bns_sample, rpop):
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
 def get_eps(exp, ess, config):
 
+    # Get base path
+    base_path = get_base_path(config)
+
     # Set seed
     set_global_seed(config["seed"])
 
     # Init hyperp.
     eps_vec = eval(config["ess_dict"][ess])
-    results_path = config["results_path"]
+    results_path = base_path / config["results_path"]
     n_samples = config["n_samples"]
     n_bns = config["n_bns"]
     error = eval(config["error"])
     tol = config["tol"]
     
     # Read data
-    root_path = get_root_path()
-    gpop = pd.read_csv(f'{root_path / config["data_path"]}/{exp}.csv')
-    bn = gum.loadBN(f'{root_path / config["bns_path"]}/{exp}.bif')
+    gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
+    bn = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
     n_nodes = config["n_nodes"]
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])
@@ -202,7 +204,7 @@ def get_eps(exp, ess, config):
             e_best = eps
             break
 
-    meta_file_path = root_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
+    meta_file_path = base_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
     with open(meta_file_path, "a") as m: 
         m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps}\n")
 
