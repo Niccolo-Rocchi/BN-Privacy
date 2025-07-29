@@ -3,11 +3,11 @@ import math
 import pyagrum as gum
 from collections import defaultdict
 import numpy as np
+from numpy import random
 from numpy.random import random_sample
 import io
 import re
 from contextlib import redirect_stdout
-from itertools import product
 from more_itertools import random_product
 
 # Log-likelihood function
@@ -31,7 +31,17 @@ def LLR(x: dict, theta, theta_hat):
     return ll_theta_hat - ll_theta
 
 # Parse the credal network
-def parse_credal_net(cn_str: str):
+def parse_cn(cn) -> tuple:
+
+    # Get the DAG
+    dag = gum.BayesNet(cn.current_bn())
+
+    # Cast CN to string
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        print(cn)
+    cn_str = buffer.getvalue()
+
     credal_dict = defaultdict(lambda: defaultdict(list))
     current_var = None
 
@@ -58,155 +68,102 @@ def parse_credal_net(cn_str: str):
             # Extraction of inner lists: [[x,x,x], [x,x,x], ...]
             vectors = re.findall(r'\[\s*([^\[\]]+?)\s*\]', raw_cpt)
             for vec in vectors:
-                prob_list = [float(x.strip()) for x in vec.split(',')]
-                credal_dict[current_var][condition].append(prob_list)
+                prob_vec = [float(x.strip()) for x in vec.split(',')]
+                credal_dict[current_var][condition].append(prob_vec)
 
-    return credal_dict
+    params = []
+    for var in credal_dict:
+        for cond, vectors in credal_dict[var].items():
+            params.append((var, cond, vectors))
 
-# Compute the vertices of CN simplex or a random subset of them
-def get_simplex(cn, n: int = None) -> list:
+    return dag, params
+
+# Compute a random subset of BNs from the CN
+def sample_from_cn(cn, n: int, where: str) -> list:
     
     '''
-    Returns a full (or random) list of BNs laying on the vertices 
-    of the simplex, i.e. the credal set.
+    Sample random BNs from the CN.
+
+    Parameters:
+    - `cn`: the given CN.
+    - `n`: number of BNs to extract from the CN.
+    - `where`: can be `inside` or `outside`. 
+        "inside": the BNs are taken from within the credal set;
+        "outside": the BNs are vertices of the credal set.
     '''
 
-    # Store the CN in form of string
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        print(cn)
-    cn_text = buffer.getvalue()
+    random.seed(42)
 
     # Parse CN
-    parsed = parse_credal_net(cn_text)
+    dag, params = parse_cn(cn)
 
-    # Get baseline DAG and init simplex
-    dag = gum.BayesNet(cn.current_bn())
-    bns = []
+    # Store variables indexes
+    var_idx = {var:[idx for idx, elem in enumerate(params) if elem[0] == var] for var in dag.names()}
 
-    # Compute slots and store variables indexes
-    slots = []
-    for var in parsed:
-        for cond, vectors in parsed[var].items():
-            slots.append((var, cond, vectors))
-    var_idx = {var:[idx for idx, elem in enumerate(slots) if elem[0] == var] for var in dag.names()}
-
-    # If 'n' is provided...
-    if bool(n):
-        # Get 'n' random combinations of CPTs
-        combinations = [random_product(*[vecs for _, _, vecs in slots]) for _ in range(n)]
-        n_combs = len(combinations)
-        assert(n_combs == n)
-    else:
-        # Get all combinations of CPTs
-        combinations = list(product(*[vecs for _, _, vecs in slots]))
-        n_combs = len(combinations)
-
-    # For each combination...
-    for combo in combinations:
-
-        # Init BN and ...
-        bn_tmp = gum.BayesNet(dag)
-
-        # Fill its CPTs
-        for var in dag.names():
-            array = np.array([(combo[idx]) for idx in var_idx.get(var)]).flatten()
-            bn_tmp.cpt(var).fillWith(array)
-
-        bns.append(bn_tmp)
-    
-    # Debug
-    # assert(n_combs == len(bns))
-
-    return bns
-
-# Compute a random subset of BNs withing the simplex
-def get_simplex_inner(cn, n: int) -> list:
-    
-    '''
-    Returns a random list of BNs laying within 
-    the simplex, i.e. the credal set.
-    '''
-
-    # Store the CN in form of string
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        print(cn)
-    cn_text = buffer.getvalue()
-
-    # Parse CN
-    parsed = parse_credal_net(cn_text)
-
-    # Get baseline DAG and init simplex
-    dag = gum.BayesNet(cn.current_bn())
-    bns = []
-
-    # Compute slots and store variables indexes
-    slots = []
-    for var in parsed:
-        for cond, vectors in parsed[var].items():
-            slots.append((var, cond, vectors))
-    var_idx = {var:[idx for idx, elem in enumerate(slots) if elem[0] == var] for var in dag.names()}
-
-    # Define BN generator
-    def gen_bn(slots):
-        try:
-            p_1 = [(vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0] for _, _, vecs in slots]
-        except IndexError:
-            p_1 = [vecs[0][0] for _, _, vecs in slots]
-
-        p = [[x, 1-x] for x in p_1]
-
-        # Debug
-        assert(np.sum(np.array(p), axis=1).all() == 1.)
-
-        yield p
+    # Cases
+    if where == "inside": sample = sample_inside
+    elif where == "outside": sample = sample_outside
+    else: raise  #TODO
 
     # Draw n random BNs
     k = 0
+    bns = []
     while k < n:
 
-        # Draw a random BN within the simplex
-        combo = next(gen_bn(slots))
+        # Init an empty BN
+        bn = gum.BayesNet(dag)
 
-        # Init BN and ...
-        bn_tmp = gum.BayesNet(dag)
+        # Sample from CN
+        next_sample = next(sample(params))
 
-        # Fill its CPTs
+        # Fill the BN's CPTs
         for var in dag.names():
-            array = np.array([(combo[idx]) for idx in var_idx.get(var)]).flatten()
-            bn_tmp.cpt(var).fillWith(array)
+            array = np.array([(next_sample[idx]) for idx in var_idx.get(var)]).flatten()
+            bn.cpt(var).fillWith(array)
 
-        bns.append(bn_tmp)
+        bns.append(bn)
         k += 1
     
     # Debug
-    # assert(n_combs == len(bns))
+    # assert(n == len(bns))
 
     return bns
 
-# Check simplex computation
-def are_all_bn_different(bn_list):
+# Given a parsed CN called `params`, sample a BN inside the credal set
+def sample_inside(params):
 
-    def serialize_bn(bn):
+    p_1 = [(vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0] for _, _, vecs in params]
+    p = [[x, 1-x] for x in p_1]
+
+    # Debug
+    # assert(np.sum(np.array(p), axis=1).all() == 1.)
+
+    yield p
+
+# Given a parsed CN called `params`, sample a vertex of the credal set
+def sample_outside(params):
+
+    yield random_product(*[vecs for _, _, vecs in params])
+
+# Check BNs sampled from a CN
+def are_all_bns_different(bn_vec) -> None:
+
+    signatures = set()
+    for bn in bn_vec:
         cpt_data = []
         for var in bn.names():
             cpt = bn.cpt(var)
             flat = [f"{v:.8f}" for v in cpt.toarray().flatten()]
             cpt_data.append(f"{var}:" + ",".join(flat))
-        return "|".join(cpt_data)
-
-    signatures = set()
-    for bn in bn_list:
-        sig = serialize_bn(bn)
+        sig = "|".join(cpt_data)
         signatures.add(sig)
         
-    print(f"({len(signatures)}/{len(bn_list)} different BNs.)")
+    print(f"({len(signatures)}/{len(bn_vec)} different BNs.)")
 
-    return
+    return None
 
 # Add counts of events to a BN
-def add_counts(bn, data):
+def add_counts_to_bn(bn, data):
 
     for node in bn.names():
         var = bn.variable(node)
@@ -237,7 +194,7 @@ def compact_dict(d):
             new_dict[k] = v
     return new_dict
 
-# Create noisy bn (Zhang et al., 2017)
+# Create noisy BN by adding Laplacian noise (Zhang et al., 2017)
 def get_noisy_bn(bn, scale: float):
 
     bn_ie = gum.LazyPropagation(bn)
@@ -267,152 +224,4 @@ def get_noisy_bn(bn, scale: float):
     bn_noisy.check()    # OK if = ().
 
     return bn_noisy
-
-# MPE function for BN
-def MPE_bn(bn_ie: gum.LazyPropagation, target: str, evid: dict) -> tuple:
-
-    # Set evidence
-    bn_ie.setEvidence(evid)
-
-    # Compute MPE and log(prob)
-    out = bn_ie.mpeLog2Posterior()
-    mpe = out[0].todict().get(target)
-    prob = np.exp2(out[1])
-
-    return mpe, prob
-
-
-
-# MPE function for CN
-def MPE_cn(bn_min:gum.BayesNet, bn_max:gum.BayesNet, T: str, children: dict) -> tuple:
-
-    '''
-    Get the MPE of a CN as: argmax_t log P_lower(T=t | children), together with its lower probability. 
-    bn_min and bn_max derive from a binary CN.
-    The DAG is assumed to be a Naive Bayes model with T the target variable.
-    Return the MPE, its probability, and the lower probability of the alternative class.
-    '''
-
-    # Get a value from a BN's CPT
-    def get_cond(bn: gum.BayesNet, X: str, x: float, parents: dict = None) -> float:
-
-        '''
-        Get P(X=x | parents) from the BN's CPT of X.
-        '''
-
-        cpt = bn.cpt(X)
-        inst = gum.Instantiation(cpt)
-        inst[X] = x 
-        if not parents:
-            assert(len(bn.parents(X)) == 0)
-            pass
-        else:
-            assert(bn.parents(X) == set(bn.ids(parents.keys())))
-            for var in parents.keys():
-                inst[var] = parents[var]
-                
-        return max(cpt.get(inst), 1e-10)    # Smoothing
-
-    # Get a Naive Bayes log-joint
-    def get_NB_log_joint(bn: gum.BayesNet, T: str, t: float, children: dict) -> float:
-        
-        '''
-        Get log[P(T=t, children)] from the BN's CPT of T.
-        The BN is assumed to be a Naive Bayes model with T the target variable.
-        '''
-
-        sum_log = 0
-        for var, val in children.items():
-            sum_log += math.log(get_cond(bn, var, val, {T:t}))
-        sum_log += math.log(get_cond(bn, T, t))
-
-        return sum_log
-
-    # Get the lower posterior from a CN
-    def get_lower_posterior(bn_min:gum.BayesNet, bn_max:gum.BayesNet, T: str, t: float, children: dict) -> float:
-        
-        '''
-        Get log P_lower(T=t | children). 
-        bn_min and bn_max derive from a binary CN.
-        The DAG is assumed to be a Naive Bayes model with T the target variable.s
-        '''
-
-        lp_lower = get_NB_log_joint(bn_min, T, t, children)
-        lp_upper = get_NB_log_joint(bn_max, T, 1-t, children)
-
-        return lp_lower - lp_upper - math.log1p(math.exp(lp_lower - lp_upper))
-
-    lp1 = get_lower_posterior(bn_min, bn_max, T, 1, children)
-    lp0 = get_lower_posterior(bn_min, bn_max, T, 0, children)
-
-    if lp1 > lp0:
-        return (1, math.exp(lp1), math.exp(lp0))
-    else:
-        return (0, math.exp(lp0), math.exp(lp1))
-
-# Run inferences on a BN
-def run_inference_bn(bn, evid_list):
-    '''
-    Notice: `bn` is assumed to be a Naive Bayes model with target variable `T`.
-    '''
-
-    # Store information
-    cov = sorted([i for i in bn.names()])
-    cov.remove("T")
-
-    # Debug
-    assert(len(cov) == bn.size() - 1)
-
-    # Create object for inference
-    bn_ie = gum.LazyPropagation(bn)
-
-    # Compute all combinations of evidence
-    mpes = []
-    probs = []
-    for e in evid_list:
-        evid = dict(zip(cov, e))
-        mpe, prob = MPE_bn(bn_ie, "T", evid)
-        mpes.append(mpe)
-        probs.append(prob)
-        
-    # Debug
-    assert(len(mpes) == len(evid_list))
-    assert(len(probs) == len(evid_list))
-
-    return mpes, probs
-
-# Run inferences on a CN
-def run_inference_cn(cn, evid_list, exp: str):
-
-    '''
-    Notice: `cn` is assumed to be a binary Naive Bayes model with target variable `T`.
-    '''
-
-    # Store information
-    cn.saveBNsMinMax(f"tmp/bn_min_{exp}.bif", f"tmp/bn_max_{exp}.bif")
-    bn_min = gum.loadBN(f"tmp/bn_min_{exp}.bif")
-    bn_max = gum.loadBN(f"tmp/bn_max_{exp}.bif")
-    cov = sorted([i for i in bn_min.names()])
-    cov.remove("T")
-
-    # Debug
-    assert(len(cov) == bn_min.size() - 1)
-
-    # Compute all combinations of evidence
-    mpes = []
-    probs = []
-    probs_alt = []
-    for e in evid_list:
-        evid = dict(zip(cov, e))
-        mpe, prob, prob_alt = MPE_cn(bn_min, bn_max, "T", evid)
-        mpes.append(mpe)
-        probs.append(prob)
-        probs_alt.append(prob_alt)
-        
-    # Debug
-    assert(len(mpes) == len(evid_list))
-    assert(len(probs) == len(evid_list))
-    assert(len(probs_alt) == len(evid_list))
-
-    return mpes, probs, probs_alt
             
