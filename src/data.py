@@ -1,16 +1,16 @@
 from src.config import *
 import pyagrum as gum
 
-def generate_data(config):
+def generate_naivebayes(config):
 
     # Set seed
     set_global_seed(config["seed"]) 
 
     # Set paths
-    root_path = get_root_path()
-    bns_path = root_path / config["bns_path"]
-    data_path = root_path / config["data_path"]
-    results_path = root_path / config["results_path"]
+    base_path = get_base_path(config)
+    bns_path = base_path / config["bns_path"]
+    data_path = base_path / config["data_path"]
+    results_path = base_path / config["results_path"]
 
     # Create empty directories
     create_clean_dir(bns_path)
@@ -21,8 +21,8 @@ def generate_data(config):
     bn_str_gen = (f"T->X{i}" for i in range(config["n_nodes"] -1))
     bn_str = "; ".join(bn_str_gen)
 
-    # For each experiment ...
-    for i in range(config["n_exps"]):
+    # For each model ...
+    for i in range(config["n_models"]):
 
         # ... generate BN, and ...
         bn = gum.fastBN(bn_str)

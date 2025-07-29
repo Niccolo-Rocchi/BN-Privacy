@@ -10,7 +10,7 @@ from src.config import *
 
 def run_inferences(exp, eps, ess, config):
 
-    root_path = get_root_path()
+    base_path = get_base_path(config)
 
     # Set seed
     set_global_seed(config["seed"])
@@ -19,8 +19,8 @@ def run_inferences(exp, eps, ess, config):
     evid_vec = [random_product(*((0,1) for _ in range(config["n_nodes"] - 1))) for _ in range(config["n_infer"])]
 
     # Store ground-truth BN
-    gt = gum.loadBN(f'{root_path / config["bns_path"]}/{exp}.bif')
-    gpop = pd.read_csv(f'{root_path / config["data_path"]}/{exp}.csv')
+    gt = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
+    gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
 
     # Learn BN from gpop
     bn_learner=gum.BNLearner(gpop)
@@ -57,7 +57,7 @@ def run_inferences(exp, eps, ess, config):
         }
     )
 
-    dir = root_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}'
+    dir = base_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}'
     results.to_csv(f"{dir}/{exp}.csv", index = False)
 
 # MPE function for BN

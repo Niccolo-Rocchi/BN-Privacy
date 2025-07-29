@@ -1,14 +1,15 @@
 ### Configuration file
 
 ## Paths
-bns_path: test/bns                                   # Where to save ground-truth BNs
-data_path: test/data                                 # Where to save data as generated from ground-truth BNs
-results_path: test/results                           # Where to save the experiment results
-meta_file: exp_meta.txt                              # File of metadata
+base_path: test/cn_vs_noisybn/output                # Base path for output
+bns_path: bns                                       # Where to save ground-truth BNs
+data_path: data                                     # Where to save data as generated from ground-truth BNs
+results_path: results                               # Where to save the experiment results
+meta_file: exp_meta.txt                             # File of metadata
 
 ## Models
 n_nodes: 10                                         # Number of nodes for each BN (Naive Bayes) model
-n_exps: 5                                           # Number of models to evaluate
+n_models: 5                                         # Number of models to evaluate
 
 ## Data
 gpop_ss: 1000                                       # Sample size of general population
