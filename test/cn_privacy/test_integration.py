@@ -1,6 +1,6 @@
 from src.config import get_config
 from src.data import generate_randombn
-from src.exp_run import run_cn_privacy    
+from src.run_exp import run_cn_privacy    
 
 def test_integration():
 
