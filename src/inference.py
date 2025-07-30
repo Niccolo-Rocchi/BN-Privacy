@@ -8,7 +8,7 @@ from src.utils import *
 from src.config import *
 
 
-def run_inferences(exp, eps, ess, config):
+def run_inferences(exp, ess, eps, config):
 
     base_path = get_base_path(config)
 

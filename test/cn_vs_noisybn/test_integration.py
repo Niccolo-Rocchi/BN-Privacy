@@ -2,7 +2,7 @@ from src.config import get_config
 from src.data import generate_naivebayes
 from src.exp_run import run_cn_vs_noisybn
 
-def test_exp():
+def test_integration():
 
     # Load config
     config = get_config("test/cn_vs_noisybn/config.yaml")

@@ -95,10 +95,11 @@ def get_eps(exp, ess, config):
     assert(gpop_ss == gpop.shape[0])
     assert(n_nodes == gpop.shape[1])
 
-    # For any data sample ...
     bn_theta_vec = []
     bn_theta_hat_vec = []
     cn_vec = []
+
+    # For any data sample ...
     for sample in range(n_samples):
 
         # ... sample pool and rpop, ...
@@ -165,11 +166,15 @@ def get_eps(exp, ess, config):
     # Compute Avg(AUC(CN)) across data samples
     auc_cn = sum(auc_cn_vec) / len(auc_cn_vec)
 
-    # Find eps
-    e_best = eps_vec[-1]
+    ## Find eps
+    eps_best = eps_vec[-1]
+
+    # For each eps ...
     for eps in eps_vec:
 
         auc_bn_noisy_vec = []
+
+        # ... run MIA against noisy BN ...
         for sample in range(n_samples):
 
             # Retrieve sample-related info
@@ -196,18 +201,150 @@ def get_eps(exp, ess, config):
                     log.write(traceback.format_exc())
 
             
-        # Compute Avg(AUC(eps)) across data samples
+        # ... and compute Avg(AUC(eps)) across data samples
         auc_bn = sum(auc_bn_noisy_vec) / n_samples
 
         # Condition on |AUC(eps) - AUC(CN)|
         if abs(auc_cn - auc_bn) <= tol:
-            e_best = eps
+            eps_best = eps
             break
 
-    meta_file_path = base_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
+    # Store found eps
+    meta_file_path = results_path / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
     with open(meta_file_path, "a") as m: 
         m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps}\n")
 
-    return exp, e_best
+    return exp, ess, eps_best
 
+# Membership attack against CN and BN
+def attack_cn_bn(exp, ess, config):
 
+    # Get base path
+    base_path = get_base_path(config)
+
+    # Set seed
+    set_global_seed(config["seed"])
+
+    # Init hyperp.
+    results_path = base_path / config["results_path"]
+    n_samples = config["n_samples"]
+    n_bns = config["n_bns"]
+    error = eval(config["error"])
+    
+    # Read data
+    gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
+    bn = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
+    n_nodes = len(bn.nodes())
+    gpop_ss = config["gpop_ss"]
+    rpop_ss = int(gpop_ss * config["rpop_prop"])
+    pool_ss =int(gpop_ss * config["pool_prop"])
+
+    # Debug
+    assert(gpop_ss == gpop.shape[0])
+    assert(n_nodes == gpop.shape[1])
+    
+    bn_theta_vec = []
+    bn_theta_hat_vec = []
+    cn_vec = []
+
+    # For any data sample ...
+    for sample in range(n_samples):
+
+        # ... sample pool and rpop, ...
+        pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
+        gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+        pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes]
+        rpop = gpop[~gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes].sample(rpop_ss)
+
+        # ... estimate BN from rpop, ...
+        learner=gum.BNLearner(rpop)
+        learner.useSmoothingPrior(1e-5)
+        bn_theta_vec.append(learner.learnParameters(bn.dag()))
+
+        # ... estimate BN from pool, ...
+        learner=gum.BNLearner(pool)
+        learner.useSmoothingPrior(1e-5)
+        bn_theta_hat_vec.append(learner.learnParameters(bn.dag()))
+
+        # ... and estimate CN from pool (by local IDM)
+        bn_counts = gum.BayesNet(bn)
+        add_counts_to_bn(bn_counts, pool)
+        cn = gum.CredalNet(bn_counts)
+        cn.idmLearning(ess)
+        cn_vec.append(cn)
+
+        # Debug
+        assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
+        assert(len(pool) == pool_ss)
+        assert(len(rpop) == rpop_ss)
+
+    # Debug
+    assert(len(bn_theta_vec) == n_samples)
+    assert(len(bn_theta_hat_vec) == n_samples)
+    assert(len(cn_vec) == n_samples)
+
+    # Compute theoretical bound
+    compl = bn.dim()
+    bound = math.sqrt(compl/pool_ss)
+
+    # Find power (beta) for any error (alpha) given theoretical bound
+    z_alpha = [norm.ppf(1 - i).item() for i in error]
+    z_one_minus_beta = [bound - i for i in z_alpha]
+    beta = [norm.cdf(i).item() for i in z_one_minus_beta]
+
+    # Init results
+    results = pd.DataFrame(
+        {"error": error,
+        "power_bound": beta}
+    )
+
+    # Run MIA against CN
+    for sample in range(n_samples):
+
+        # Retrieve sample-related info
+        y_true = gpop[f"in-pool-{sample}"]
+        cn = cn_vec[sample]
+        bn_theta_ie = gum.LazyPropagation(bn_theta_vec[sample])
+
+        # Extract random subset within simplex
+        bns_sample = sample_from_cn(cn, n_bns, "inside")
+
+        # Get the maximum likelihood BN
+        best_bn = get_maxll_bn(bns_sample, rpop)
+        bn_ie = gum.LazyPropagation(best_bn)
+
+        # MIA
+        try:
+            power_vec, _ = run_mia(bn_ie, bn_theta_ie, rpop, gpop, y_true, error)
+            results[f"power_CN_sample{sample}"] = power_vec
+
+        except:
+
+            # Debug
+            with open(f"{results_path}/log.txt", "a") as log: 
+                log.write(f"{exp}: error with sample {sample} (CN).\n")
+                log.write(traceback.format_exc())
+
+    # Run MIA against BN
+    for sample in range(n_samples):
+
+        # Retrieve sample-related info
+        y_true = gpop[f"in-pool-{sample}"]
+        bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat_vec[sample])
+        bn_theta_ie = gum.LazyPropagation(bn_theta_vec[sample])
+
+        try:                
+
+            # MIA
+            power_vec, _ = run_mia(bn_theta_hat_ie, bn_theta_ie, rpop, gpop, y_true, error)
+            results[f"power_BN_sample{sample}"] = power_vec
+
+        except:
+
+            # Debug
+            with open(f"{results_path}/log.txt", "a") as log: 
+                log.write(f"{exp}: error with sample {sample} (BN).\n")
+                log.write(traceback.format_exc())
+
+    # Save results
+    results.to_csv(f"{results_path}/{exp}-ess{ess}.csv", index=False)

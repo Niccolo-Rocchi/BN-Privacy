@@ -1,0 +1,27 @@
+### Configuration file
+
+## Paths
+base_path: experiments/cn_privacy/output            # Base path for output
+bns_path: bns                                       # Where to save ground-truth BNs
+data_path: data                                     # Where to save data as generated from ground-truth BNs
+results_path: results                               # Where to save the experiment results
+meta_file: exp_meta.txt                             # File of metadata
+
+## Models
+n_nodes_vec: '[10, 20, 50, 100]'                    # List of models' number of nodes
+edge_ratio_vec: '[1, 2, 4]'                         # List of models' edge ratio
+
+## Data
+gpop_ss: 10000                                      # Sample size of general population
+rpop_prop: 0.5                                      # Sample size of reference population = gpop_ss * rpop_prop
+pool_prop: 0.25                                     # Sample size of pool population = gpop_ss * pool_prop
+
+## MIA
+n_samples: 20                                       # Number of data samples
+n_bns: 500                                          # Number of BNs to sample within the CN
+error: 'np.logspace(-4, 0, 20, endpoint=False)'     # Type-I errors vector
+ess_vec: '[1, 10, 50, 100, 1000]'                   # List of ESS
+
+## Other
+seed: 42                                            # Global seed
+num_cores: 'multiprocessing.cpu_count() - 1'        # Number of threads to use for parallelization
