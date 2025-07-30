@@ -1,19 +1,32 @@
-# How to use
+# Towards Privacy-Aware Bayesian Networks: A Credal Approach
 
-## Run code
+## Experiments
 
-### With Docker (recommended for reproducibility)
-1. Run: `docker build . -t ecai2025` to build the Docker image,
-2. Run: `docker run -d --rm -v ecai:/workspace/results ecai2025 python main.py`,
-3. Results available at: `/var/lib/docker/volumes/ecai/_data/results/`.
-4. Copy the `results/` folder into the current directory to be able to plot the results.
+`<name>` is the name of experiment to run. It can be one of the following.
 
-### Without Docker
-Create and activate a Python virtual environment, then install the packages listed in `requirements.txt`. 
+1. `cn_privacy`: run membership inference attack against a Bayesian network (BN), its related credal network (CN), and computes the theoretical privacy estimate of BN. The pipeline and results are described in the paper.
+2. `cn_vs_noisybn`: additional experiment, not reported in the paper. It compares two privacy techniques, namely the CN and a noisy version of BN. All models are naive Bayes with target variable T. First, the CN and noisy BN hyperparameters are fine-tuned so that they achieve the same privacy level; then, their accuracy is computed in terms of most probable explaination (MPE) on variable T.
 
-1. Run: `python generation.py`,
-2. Run: `python main.py`,
-3. Results available at: `./results/`.
+## How to 
 
-## Plot results
-Run the `Plot_results.ipynb` notebook. You should be able to choose which experiments to plot.
+### Run code
+
+#### With Docker (recommended)
+1. Run: `docker build . -t bnp:2025` to build the Docker image,
+2. Run: `docker run -d --rm -v bnp:/workspace bnp:2025 python -m experiments.<name>.main`,
+3. Results available at: `/var/lib/docker/volumes/bnp/_data/experiments/<name>/output/`.
+
+#### Without Docker
+Create and activate a Python virtual environment. Then, install the required packages: `pip install -r requirements.txt`. 
+
+1. Run: `python -m experiments.<name>.main`,
+2. Results available at: `experiments/<name>/output/`.
+
+### Test
+Tests can be run with: `pytest`. Results available at: `test/<name>/output/`.
+
+### Plot results
+Use the `Plot_results.ipynb` notebook, available for each experiment. Plots will be available at: `experiments/<name>/output/plots`.
+
+### Upgrade all Python packages
+Run: `pip install --upgrade $(pip freeze | cut -d '=' -f 1)` to upgrade the packages, then `pip freeze > requirements.txt` to update the requirements file.

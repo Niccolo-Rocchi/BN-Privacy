@@ -1,0 +1,12 @@
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: docker build . -t bnp:2025
+    - name: Run pytest inside the container
+      run: docker run bnp:2025 pytest

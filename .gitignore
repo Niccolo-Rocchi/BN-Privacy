@@ -1,9 +1,5 @@
-venv/
-results/
-bns/
-data/
-*.bif
-*.pyc
-*.txt
-*.pdf
+venv
+output
+bin
 __pycache__
+.pytest_cache

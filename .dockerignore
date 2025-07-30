@@ -1,8 +1,5 @@
-__pycache__/
-bns/
-data/
-Notebooks/
-results/
-venv/
+venv
+output
+bin
 __pycache__
-
+.pytest_cache
