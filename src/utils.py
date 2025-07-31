@@ -1,14 +1,14 @@
-import numpy as np
+import io
 import math
-import pyagrum as gum
+import re
 from collections import defaultdict
+from contextlib import redirect_stdout
+
 import numpy as np
+import pyagrum as gum
+from more_itertools import random_product
 from numpy import random
 from numpy.random import random_sample
-import io
-import re
-from contextlib import redirect_stdout
-from more_itertools import random_product
 
 
 # Log-likelihood function

@@ -1,12 +1,13 @@
 import traceback
+
 import numpy as np
 import pandas as pd
+import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
-import pyagrum as gum
 
-from src.utils import *
 from src.config import *
+from src.utils import *
 
 
 # Get the attack power related to a fixed error

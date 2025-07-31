@@ -1,8 +1,9 @@
-import yaml
 import random
-import pyagrum as gum
 import shutil
 from pathlib import Path
+
+import pyagrum as gum
+import yaml
 
 
 # Read configuration for experiment

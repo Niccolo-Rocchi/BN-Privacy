@@ -1,7 +1,9 @@
-from src.config import *
-import pyagrum as gum
 from itertools import product
 from pprint import pformat
+
+import pyagrum as gum
+
+from src.config import *
 from src.utils import compact_dict
 
 

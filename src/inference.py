@@ -1,11 +1,12 @@
-import pandas as pd
-from scipy.stats import norm
-import pyagrum as gum
-from numpy import random
 from tempfile import TemporaryDirectory
 
-from src.utils import *
+import pandas as pd
+import pyagrum as gum
+from numpy import random
+from scipy.stats import norm
+
 from src.config import *
+from src.utils import *
 
 
 def run_inferences(exp, ess, eps, config):
