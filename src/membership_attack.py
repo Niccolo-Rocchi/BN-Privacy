@@ -8,6 +8,7 @@ import pyagrum as gum
 from src.utils import *
 from src.config import *
 
+
 # Get the attack power related to a fixed error
 def get_power(L_ref, L_gen, ground_truth, error) -> float:
 
@@ -22,12 +23,19 @@ def get_power(L_ref, L_gen, ground_truth, error) -> float:
 
     return power
 
+
 # MIA: membership inference attack
 def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 
     # Compute LLR(x) on reference and general populations
-    L_ref = rpop.apply(lambda x: LLR(x.to_dict(), baseline, model), axis=1).dropna().sort_values()
-    L_gen = gpop[[*rpop.columns]].apply(lambda x: LLR(x.to_dict(), baseline, model), axis=1)
+    L_ref = (
+        rpop.apply(lambda x: LLR(x.to_dict(), baseline, model), axis=1)
+        .dropna()
+        .sort_values()
+    )
+    L_gen = gpop[[*rpop.columns]].apply(
+        lambda x: LLR(x.to_dict(), baseline, model), axis=1
+    )
 
     power_vec = []
 
@@ -41,14 +49,14 @@ def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 
     return power_vec, auc
 
+
 # Get the maximum likelihood BN
 def get_maxll_bn(bns_sample, rpop):
-
-    '''
-    Given a list `bns_sample` of BNs, 
+    """
+    Given a list `bns_sample` of BNs,
     find argmax_{BN in bns_sample} LL(BN | rpop),
     where LL is the log-likelihood function.
-    '''
+    """
 
     maxll_bn = None
     maxll = -np.inf
@@ -60,11 +68,12 @@ def get_maxll_bn(bns_sample, rpop):
         L_im = rpop.apply(lambda x: LL(x.to_dict(), bn_ie), axis=1).dropna()
         ll = np.sum(L_im)
 
-        if ll > maxll: 
+        if ll > maxll:
             maxll_bn = bn
             maxll = ll
 
     return maxll_bn
+
 
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
 def get_eps(exp, ess, config):
@@ -82,18 +91,18 @@ def get_eps(exp, ess, config):
     n_bns = config["n_bns"]
     error = eval(config["error"])
     tol = config["tol"]
-    
+
     # Read data
     gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
     bn = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
     n_nodes = config["n_nodes"]
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])
-    pool_ss =int(gpop_ss * config["pool_prop"])
+    pool_ss = int(gpop_ss * config["pool_prop"])
 
     # Debug
-    assert(gpop_ss == gpop.shape[0])
-    assert(n_nodes == gpop.shape[1])
+    assert gpop_ss == gpop.shape[0]
+    assert n_nodes == gpop.shape[1]
 
     bn_theta_vec = []
     bn_theta_hat_vec = []
@@ -109,12 +118,12 @@ def get_eps(exp, ess, config):
         rpop = gpop[~gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes].sample(rpop_ss)
 
         # ... estimate BN from rpop, ...
-        learner=gum.BNLearner(rpop)
+        learner = gum.BNLearner(rpop)
         learner.useSmoothingPrior(1e-5)
         bn_theta_vec.append(learner.learnParameters(bn.dag()))
 
         # ... estimate BN from pool, ...
-        learner=gum.BNLearner(pool)
+        learner = gum.BNLearner(pool)
         learner.useSmoothingPrior(1e-5)
         bn_theta_hat_vec.append(learner.learnParameters(bn.dag()))
 
@@ -126,14 +135,14 @@ def get_eps(exp, ess, config):
         cn_vec.append(cn)
 
         # Debug
-        assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
-        assert(len(pool) == pool_ss)
-        assert(len(rpop) == rpop_ss)
+        assert len(pool) == sum(gpop[f"in-pool-{sample}"])
+        assert len(pool) == pool_ss
+        assert len(rpop) == rpop_ss
 
     # Debug
-    assert(len(bn_theta_vec) == n_samples)
-    assert(len(bn_theta_hat_vec) == n_samples)
-    assert(len(cn_vec) == n_samples)
+    assert len(bn_theta_vec) == n_samples
+    assert len(bn_theta_hat_vec) == n_samples
+    assert len(cn_vec) == n_samples
 
     # Run MIA against CN
     auc_cn_vec = []
@@ -159,10 +168,10 @@ def get_eps(exp, ess, config):
         except:
 
             # Debug
-            with open(f"{results_path}/log.txt", "a") as log: 
+            with open(f"{results_path}/log.txt", "a") as log:
                 log.write(f"{exp}: error with sample {sample} (CN).\n")
                 log.write(traceback.format_exc())
-     
+
     # Compute Avg(AUC(CN)) across data samples
     auc_cn = sum(auc_cn_vec) / len(auc_cn_vec)
 
@@ -187,7 +196,7 @@ def get_eps(exp, ess, config):
             bn_noisy = get_noisy_bn(bn_theta_hat, scale)
             bn_noisy_ie = gum.LazyPropagation(bn_noisy)
 
-            try:                
+            try:
 
                 # MIA
                 _, auc = run_mia(bn_noisy_ie, bn_theta_ie, rpop, gpop, y_true, error)
@@ -196,11 +205,12 @@ def get_eps(exp, ess, config):
             except:
 
                 # Debug
-                with open(f"{results_path}/log.txt", "a") as log: 
-                    log.write(f"{exp}: error with sample {sample} (BN noisy, eps: {eps}).\n")
+                with open(f"{results_path}/log.txt", "a") as log:
+                    log.write(
+                        f"{exp}: error with sample {sample} (BN noisy, eps: {eps}).\n"
+                    )
                     log.write(traceback.format_exc())
 
-            
         # ... and compute Avg(AUC(eps)) across data samples
         auc_bn = sum(auc_bn_noisy_vec) / n_samples
 
@@ -210,11 +220,16 @@ def get_eps(exp, ess, config):
             break
 
     # Store found eps
-    meta_file_path = results_path / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
-    with open(meta_file_path, "a") as m: 
+    meta_file_path = (
+        results_path
+        / f'results_nodes{config["n_nodes"]}_ess{ess}'
+        / config["meta_file"]
+    )
+    with open(meta_file_path, "a") as m:
         m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps}\n")
 
     return exp, ess, eps_best
+
 
 # Membership attack against CN and BN
 def attack_cn_bn(exp, ess, config):
@@ -230,19 +245,19 @@ def attack_cn_bn(exp, ess, config):
     n_samples = config["n_samples"]
     n_bns = config["n_bns"]
     error = eval(config["error"])
-    
+
     # Read data
     gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
     bn = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
     n_nodes = len(bn.nodes())
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])
-    pool_ss =int(gpop_ss * config["pool_prop"])
+    pool_ss = int(gpop_ss * config["pool_prop"])
 
     # Debug
-    assert(gpop_ss == gpop.shape[0])
-    assert(n_nodes == gpop.shape[1])
-    
+    assert gpop_ss == gpop.shape[0]
+    assert n_nodes == gpop.shape[1]
+
     bn_theta_vec = []
     bn_theta_hat_vec = []
     cn_vec = []
@@ -257,12 +272,12 @@ def attack_cn_bn(exp, ess, config):
         rpop = gpop[~gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes].sample(rpop_ss)
 
         # ... estimate BN from rpop, ...
-        learner=gum.BNLearner(rpop)
+        learner = gum.BNLearner(rpop)
         learner.useSmoothingPrior(1e-5)
         bn_theta_vec.append(learner.learnParameters(bn.dag()))
 
         # ... estimate BN from pool, ...
-        learner=gum.BNLearner(pool)
+        learner = gum.BNLearner(pool)
         learner.useSmoothingPrior(1e-5)
         bn_theta_hat_vec.append(learner.learnParameters(bn.dag()))
 
@@ -274,18 +289,18 @@ def attack_cn_bn(exp, ess, config):
         cn_vec.append(cn)
 
         # Debug
-        assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
-        assert(len(pool) == pool_ss)
-        assert(len(rpop) == rpop_ss)
+        assert len(pool) == sum(gpop[f"in-pool-{sample}"])
+        assert len(pool) == pool_ss
+        assert len(rpop) == rpop_ss
 
     # Debug
-    assert(len(bn_theta_vec) == n_samples)
-    assert(len(bn_theta_hat_vec) == n_samples)
-    assert(len(cn_vec) == n_samples)
+    assert len(bn_theta_vec) == n_samples
+    assert len(bn_theta_hat_vec) == n_samples
+    assert len(cn_vec) == n_samples
 
     # Compute theoretical bound
     compl = bn.dim()
-    bound = math.sqrt(compl/pool_ss)
+    bound = math.sqrt(compl / pool_ss)
 
     # Find power (beta) for any error (alpha) given theoretical bound
     z_alpha = [norm.ppf(1 - i).item() for i in error]
@@ -293,10 +308,7 @@ def attack_cn_bn(exp, ess, config):
     beta = [norm.cdf(i).item() for i in z_one_minus_beta]
 
     # Init results
-    results = pd.DataFrame(
-        {"error": error,
-        "power_bound": beta}
-    )
+    results = pd.DataFrame({"error": error, "power_bound": beta})
 
     # Run MIA against CN
     for sample in range(n_samples):
@@ -321,7 +333,7 @@ def attack_cn_bn(exp, ess, config):
         except:
 
             # Debug
-            with open(f"{results_path}/log.txt", "a") as log: 
+            with open(f"{results_path}/log.txt", "a") as log:
                 log.write(f"{exp}: error with sample {sample} (CN).\n")
                 log.write(traceback.format_exc())
 
@@ -333,16 +345,18 @@ def attack_cn_bn(exp, ess, config):
         bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat_vec[sample])
         bn_theta_ie = gum.LazyPropagation(bn_theta_vec[sample])
 
-        try:                
+        try:
 
             # MIA
-            power_vec, _ = run_mia(bn_theta_hat_ie, bn_theta_ie, rpop, gpop, y_true, error)
+            power_vec, _ = run_mia(
+                bn_theta_hat_ie, bn_theta_ie, rpop, gpop, y_true, error
+            )
             results[f"power_BN_sample{sample}"] = power_vec
 
         except:
 
             # Debug
-            with open(f"{results_path}/log.txt", "a") as log: 
+            with open(f"{results_path}/log.txt", "a") as log:
                 log.write(f"{exp}: error with sample {sample} (BN).\n")
                 log.write(traceback.format_exc())
 

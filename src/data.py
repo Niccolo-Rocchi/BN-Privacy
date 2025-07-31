@@ -4,10 +4,11 @@ from itertools import product
 from pprint import pformat
 from src.utils import compact_dict
 
+
 def generate_naivebayes(config):
 
     # Set seed
-    set_global_seed(config["seed"]) 
+    set_global_seed(config["seed"])
 
     # Set paths
     base_path = get_base_path(config)
@@ -21,7 +22,7 @@ def generate_naivebayes(config):
     create_clean_dir(results_path)
 
     # Set BN (Naive Bayes) structure
-    bn_str_gen = (f"T->X{i}" for i in range(config["n_nodes"] -1))
+    bn_str_gen = (f"T->X{i}" for i in range(config["n_nodes"] - 1))
     bn_str = "; ".join(bn_str_gen)
 
     # For each model ...
@@ -37,21 +38,27 @@ def generate_naivebayes(config):
         data_gen.setDiscretizedLabelModeRandom()
         gpop = data_gen.to_pandas()
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
-    
+
     # For each ESS ...
     for ess in config["ess_dict"].keys():
 
         # ... create results subdirectories and metadata files
-        meta_file_path = base_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}' / config["meta_file"]
+        meta_file_path = (
+            base_path
+            / config["results_path"]
+            / f'results_nodes{config["n_nodes"]}_ess{ess}'
+            / config["meta_file"]
+        )
         meta_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(meta_file_path, "w") as f: 
-            f.write(pformat(compact_dict(config)) + "\n\n" + "#"*50 + "\n\n")
+        with open(meta_file_path, "w") as f:
+            f.write(pformat(compact_dict(config)) + "\n\n" + "#" * 50 + "\n\n")
+
 
 def generate_randombn(config):
 
     # Set seed
-    set_global_seed(config["seed"]) 
+    set_global_seed(config["seed"])
 
     # Set paths
     base_path = get_base_path(config)
@@ -75,8 +82,10 @@ def generate_randombn(config):
         bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=2)
         gum.saveBN(bn, f"{bns_path}/exp{i}.bif")
 
-        with open(f'{results_path}/{config["meta_file"]}', "a") as m: 
-            m.write(f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n")
+        with open(f'{results_path}/{config["meta_file"]}', "a") as m:
+            m.write(
+                f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
+            )
 
         # ... and generate gpop from BN
         data_gen = gum.BNDatabaseGenerator(bn)
@@ -84,6 +93,3 @@ def generate_randombn(config):
         data_gen.setDiscretizedLabelModeRandom()
         gpop = data_gen.to_pandas()
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
-
-
-

@@ -1,6 +1,6 @@
 from src.config import get_config
 from src.data import generate_naivebayes
-from src.run_exp import run_cn_vs_noisybn    
+from src.run_exp import run_cn_vs_noisybn
 
 if __name__ == "__main__":
 

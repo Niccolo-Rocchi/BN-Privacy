@@ -10,8 +10,9 @@ import re
 from contextlib import redirect_stdout
 from more_itertools import random_product
 
+
 # Log-likelihood function
-def LL(x:dict, theta):
+def LL(x: dict, theta):
 
     # Erase all evidences and apply addEvidence(key,value) for every pairs in x
     theta.setEvidence(x)
@@ -21,6 +22,7 @@ def LL(x:dict, theta):
 
     return np.log(ll)
 
+
 # Log-likelihood ratio (LLR) function
 def LLR(x: dict, theta, theta_hat):
 
@@ -29,6 +31,7 @@ def LLR(x: dict, theta, theta_hat):
     ll_theta_hat = LL(x, theta_hat)
 
     return ll_theta_hat - ll_theta
+
 
 # Parse the credal network
 def parse_cn(cn) -> tuple:
@@ -45,13 +48,13 @@ def parse_cn(cn) -> tuple:
     credal_dict = defaultdict(lambda: defaultdict(list))
     current_var = None
 
-    lines = cn_str.strip().split('\n')
+    lines = cn_str.strip().split("\n")
 
     for line in lines:
         line = line.strip()
 
         # Variable identification
-        var_match = re.match(r'^([A-Za-z0-9_]+):', line)
+        var_match = re.match(r"^([A-Za-z0-9_]+):", line)
         if var_match:
             current_var = var_match.group(1)
             continue
@@ -60,15 +63,15 @@ def parse_cn(cn) -> tuple:
             continue
 
         # CPT identification
-        cpt_match = re.match(r'^<([^>]*)>\s*:\s*(.*)', line)
+        cpt_match = re.match(r"^<([^>]*)>\s*:\s*(.*)", line)
         if cpt_match:
             condition = f"<{cpt_match.group(1).strip()}>"
             raw_cpt = cpt_match.group(2)
 
             # Extraction of inner lists: [[x,x,x], [x,x,x], ...]
-            vectors = re.findall(r'\[\s*([^\[\]]+?)\s*\]', raw_cpt)
+            vectors = re.findall(r"\[\s*([^\[\]]+?)\s*\]", raw_cpt)
             for vec in vectors:
-                prob_vec = [float(x.strip()) for x in vec.split(',')]
+                prob_vec = [float(x.strip()) for x in vec.split(",")]
                 credal_dict[current_var][condition].append(prob_vec)
 
     params = []
@@ -78,19 +81,19 @@ def parse_cn(cn) -> tuple:
 
     return dag, params
 
+
 # Compute a random subset of BNs from the CN
 def sample_from_cn(cn, n: int, where: str) -> list:
-    
-    '''
+    """
     Sample random BNs from the CN.
 
     Parameters:
     - `cn`: the given CN.
     - `n`: number of BNs to extract from the CN.
-    - `where`: can be `inside` or `outside`. 
+    - `where`: can be `inside` or `outside`.
         "inside": the BNs are taken from within the credal set;
         "outside": the BNs are vertices of the credal set.
-    '''
+    """
 
     random.seed(42)
 
@@ -98,12 +101,18 @@ def sample_from_cn(cn, n: int, where: str) -> list:
     dag, params = parse_cn(cn)
 
     # Store variables indexes
-    var_idx = {var:[idx for idx, elem in enumerate(params) if elem[0] == var] for var in dag.names()}
+    var_idx = {
+        var: [idx for idx, elem in enumerate(params) if elem[0] == var]
+        for var in dag.names()
+    }
 
     # Cases
-    if where == "inside": sample = sample_inside
-    elif where == "outside": sample = sample_outside
-    else: raise  #TODO
+    if where == "inside":
+        sample = sample_inside
+    elif where == "outside":
+        sample = sample_outside
+    else:
+        raise  # TODO
 
     # Draw n random BNs
     k = 0
@@ -123,27 +132,33 @@ def sample_from_cn(cn, n: int, where: str) -> list:
 
         bns.append(bn)
         k += 1
-    
+
     # Debug
     # assert(n == len(bns))
 
     return bns
 
+
 # Given a parsed CN called `params`, sample a BN inside the credal set
 def sample_inside(params):
 
-    p_1 = [(vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0] for _, _, vecs in params]
-    p = [[x, 1-x] for x in p_1]
+    p_1 = [
+        (vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0]
+        for _, _, vecs in params
+    ]
+    p = [[x, 1 - x] for x in p_1]
 
     # Debug
     # assert(np.sum(np.array(p), axis=1).all() == 1.)
 
     yield p
 
+
 # Given a parsed CN called `params`, sample a vertex of the credal set
 def sample_outside(params):
 
     yield random_product(*[vecs for _, _, vecs in params])
+
 
 # Check BNs sampled from a CN
 def are_all_bns_different(bn_vec) -> None:
@@ -157,10 +172,11 @@ def are_all_bns_different(bn_vec) -> None:
             cpt_data.append(f"{var}:" + ",".join(flat))
         sig = "|".join(cpt_data)
         signatures.add(sig)
-        
+
     print(f"({len(signatures)}/{len(bn_vec)} different BNs.)")
 
     return None
+
 
 # Add counts of events to a BN
 def add_counts_to_bn(bn, data):
@@ -181,18 +197,22 @@ def add_counts_to_bn(bn, data):
                 continue
 
         bn.cpt(node).fillWith(counts_array.flatten().tolist())
-        
+
     return
+
 
 # Compact a dictionary to be printable
 def compact_dict(d):
     new_dict = dict()
     for k, v in d.items():
         if isinstance(v, np.ndarray):
-            new_dict[k] = f"np.ndarray: [{v[0]:.2g}, {v[1]:.2g}, ..., {v[-1]:.2g}], length={len(v)}"
+            new_dict[k] = (
+                f"np.ndarray: [{v[0]:.2g}, {v[1]:.2g}, ..., {v[-1]:.2g}], length={len(v)}"
+            )
         else:
             new_dict[k] = v
     return new_dict
+
 
 # Create noisy BN by adding Laplacian noise (Zhang et al., 2017)
 def get_noisy_bn(bn, scale: float):
@@ -210,7 +230,9 @@ def get_noisy_bn(bn, scale: float):
 
         # Add noise to P(X, Pa(X)) and normalize
         noise = np.random.laplace(scale=scale, size=np.prod(joint.shape))
-        noisy_joint = np.clip(joint.toarray().flatten() + noise, a_min=10e-10, a_max=None)
+        noisy_joint = np.clip(
+            joint.toarray().flatten() + noise, a_min=10e-10, a_max=None
+        )
         noisy_joint = noisy_joint / np.sum(noisy_joint)
         joint.fillWith(noisy_joint)
 
@@ -221,7 +243,6 @@ def get_noisy_bn(bn, scale: float):
         bn_noisy.cpt(node).fillWith(cond)
 
     # Check noisy bn
-    bn_noisy.check()    # OK if = ().
+    bn_noisy.check()  # OK if = ().
 
     return bn_noisy
-            
