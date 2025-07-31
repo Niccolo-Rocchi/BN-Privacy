@@ -1,3 +1,4 @@
+import math
 import traceback
 
 import numpy as np
@@ -6,18 +7,19 @@ import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
 
-from src.config import *
-from src.utils import *
+from src.config import get_base_path, set_global_seed
+from src.utils import (add_counts_to_bn, get_ll, get_llr, get_noisy_bn,
+                       sample_from_cn)
 
 
 # Get the attack power related to a fixed error
-def get_power(L_ref, L_gen, ground_truth, error) -> float:
+def get_power(llr_ref, llr_gen, ground_truth, error) -> float:
 
     # Compute the threshold
-    t = np.quantile(L_ref, 1 - error).item()
+    t = np.quantile(llr_ref, 1 - error).item()
 
     # Test: L(x) > t => reject H_0 => assign `x` to target_pop
-    y_pred = L_gen > t
+    y_pred = llr_gen > t
 
     # Compute power (i.e., true positive rate)
     power = sum(ground_truth & y_pred) / sum(ground_truth)
@@ -28,21 +30,21 @@ def get_power(L_ref, L_gen, ground_truth, error) -> float:
 # MIA: membership inference attack
 def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 
-    # Compute LLR(x) on reference and general populations
-    L_ref = (
-        rpop.apply(lambda x: LLR(x.to_dict(), baseline, model), axis=1)
+    # Compute llr(x) on reference and general populations
+    llr_ref = (
+        rpop.apply(lambda x: get_llr(x.to_dict(), baseline, model), axis=1)
         .dropna()
         .sort_values()
     )
-    L_gen = gpop[[*rpop.columns]].apply(
-        lambda x: LLR(x.to_dict(), baseline, model), axis=1
+    llr_gen = gpop[[*rpop.columns]].apply(
+        lambda x: get_llr(x.to_dict(), baseline, model), axis=1
     )
 
     power_vec = []
 
     # Get the power for each error
     for error in error_vec:
-        power = get_power(L_ref, L_gen, ground_truth, error)
+        power = get_power(llr_ref, llr_gen, ground_truth, error)
         power_vec.append(power)
 
     # Compute and store AUC
@@ -55,8 +57,8 @@ def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 def get_maxll_bn(bns_sample, rpop):
     """
     Given a list `bns_sample` of BNs,
-    find argmax_{BN in bns_sample} LL(BN | rpop),
-    where LL is the log-likelihood function.
+    find argmax_{BN in bns_sample} ll(BN | rpop),
+    where ll is the log-likelihood function.
     """
 
     maxll_bn = None
@@ -66,12 +68,12 @@ def get_maxll_bn(bns_sample, rpop):
 
         # Estimate the likelihood of rpop
         bn_ie = gum.LazyPropagation(bn)
-        L_im = rpop.apply(lambda x: LL(x.to_dict(), bn_ie), axis=1).dropna()
-        ll = np.sum(L_im)
+        llr_im = rpop.apply(lambda x: get_ll(x.to_dict(), bn_ie), axis=1).dropna()
+        llr = np.sum(llr_im)
 
-        if ll > maxll:
+        if llr > maxll:
             maxll_bn = bn
-            maxll = ll
+            maxll = llr
 
     return maxll_bn
 
@@ -166,7 +168,7 @@ def get_eps(exp, ess, config):
             _, auc = run_mia(bn_ie, bn_theta_ie, rpop, gpop, y_true, error)
             auc_cn_vec.append(auc)
 
-        except:
+        except Exception:
 
             # Debug
             with open(f"{results_path}/log.txt", "a") as log:
@@ -176,7 +178,7 @@ def get_eps(exp, ess, config):
     # Compute Avg(AUC(CN)) across data samples
     auc_cn = sum(auc_cn_vec) / len(auc_cn_vec)
 
-    ## Find eps
+    # Find eps
     eps_best = eps_vec[-1]
 
     # For each eps ...
@@ -203,7 +205,7 @@ def get_eps(exp, ess, config):
                 _, auc = run_mia(bn_noisy_ie, bn_theta_ie, rpop, gpop, y_true, error)
                 auc_bn_noisy_vec.append(auc)
 
-            except:
+            except Exception:
 
                 # Debug
                 with open(f"{results_path}/log.txt", "a") as log:
@@ -227,7 +229,7 @@ def get_eps(exp, ess, config):
         / config["meta_file"]
     )
     with open(meta_file_path, "a") as m:
-        m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps}\n")
+        m.write(f"- {exp}. Nodes: {n_nodes} Eps: {eps_best}\n")
 
     return exp, ess, eps_best
 
@@ -331,7 +333,7 @@ def attack_cn_bn(exp, ess, config):
             power_vec, _ = run_mia(bn_ie, bn_theta_ie, rpop, gpop, y_true, error)
             results[f"power_CN_sample{sample}"] = power_vec
 
-        except:
+        except Exception:
 
             # Debug
             with open(f"{results_path}/log.txt", "a") as log:
@@ -354,7 +356,7 @@ def attack_cn_bn(exp, ess, config):
             )
             results[f"power_BN_sample{sample}"] = power_vec
 
-        except:
+        except Exception:
 
             # Debug
             with open(f"{results_path}/log.txt", "a") as log:

@@ -1,22 +1,23 @@
-### Configuration file
+## Configuration file
 
-## Paths
+# Paths
 base_path: experiments/cn_vs_noisybn/output         # Base path for output
 bns_path: bns                                       # Where to save ground-truth BNs
 data_path: data                                     # Where to save data as generated from ground-truth BNs
 results_path: results                               # Where to save the experiment results
 meta_file: exp_meta.txt                             # File of metadata
 
-## Models
-n_nodes: 10                                         # Number of nodes for each BN (Naive Bayes) model
+# Models (Naive Bayes)
+target_var: 'T'                                     # Target variable
+n_nodes: 10                                         # Number of nodes for each BN model
 n_models: 10                                        # Number of models to evaluate
 
-## Data
+# Data
 gpop_ss: 1000                                       # Sample size of general population
 rpop_prop: 0.5                                      # Sample size of reference population = gpop_ss * rpop_prop
 pool_prop: 0.25                                     # Sample size of pool population = gpop_ss * pool_prop
 
-## MIA
+# MIA
 n_samples: 30                                       # Number of data samples
 n_bns: 50                                           # Number of BNs to sample within the CN
 tol: 0.01                                           # To find eps s.t. |AUC(eps) - AUC(CN)| < tol
@@ -29,9 +30,9 @@ ess_dict:                                           # Eps list to evaluate for e
   40: 'np.arange(5e-6, 1e-2, 5e-6)' 
   50: 'np.arange(5e-7, 5e-4, 5e-7)'
 
-## Inferences
+# Inferences
 n_infer: 1000                                       # Number of inferences to perform
 
-## Other
+# Other
 seed: 42                                            # Global seed
 num_cores: 'multiprocessing.cpu_count() - 1'        # Number of threads to use for parallelization

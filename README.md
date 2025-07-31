@@ -26,9 +26,9 @@ This updates the requirements file with the upgraded packages.
 
 ## Experiments
 
-`<name>` is the name of experiment to run. It can be one of the following.
+`<name>` is the name of the experiment to run. It can be one of the following.
 
-1. `cn_privacy`: run membership inference attack against a Bayesian network (BN), its related credal network (CN), and computes the theoretical privacy estimate of BN. The pipeline and results are described in the paper.
+1. `cn_privacy`: run membership inference attack against a Bayesian network (BN), its related credal network (CN), and compute the theoretical privacy estimate of BN. The pipeline and results are described in the paper.
 
 2. `cn_vs_noisybn`: additional experiment, not reported in the paper. It compares two privacy techniques, namely the CN and a noisy version of BN. All models are naive Bayes with target variable T. First, the CN and noisy BN hyperparameters are fine-tuned so that they achieve the same privacy level; then, their accuracy is computed in terms of most probable explanation (MPE) on variable T.
 
@@ -76,13 +76,26 @@ Test results are available at:
 
 `test/<name>/output/`.
 
-## Formatting
+## Formatting and linting
 
 Format code by running:
 
 ```bash
 black .
 isort .
+```
+
+Lint code by running:
+
+```bash
+flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv
+flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=venv
+```
+
+Analyze code by running:
+
+```bash
+pylint $(git ls-files '*.py')
 ```
 
 ## Plot results

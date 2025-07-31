@@ -3,7 +3,7 @@ from pprint import pformat
 
 import pyagrum as gum
 
-from src.config import *
+from src.config import create_clean_dir, get_base_path, set_global_seed
 from src.utils import compact_dict
 
 
@@ -24,7 +24,7 @@ def generate_naivebayes(config):
     create_clean_dir(results_path)
 
     # Set BN (Naive Bayes) structure
-    bn_str_gen = (f"T->X{i}" for i in range(config["n_nodes"] - 1))
+    bn_str_gen = (f'{config["target_var"]}->X{i}' for i in range(config["n_nodes"] - 1))
     bn_str = "; ".join(bn_str_gen)
 
     # For each model ...

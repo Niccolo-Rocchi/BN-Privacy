@@ -1,5 +1,4 @@
 import io
-import math
 import re
 from collections import defaultdict
 from contextlib import redirect_stdout
@@ -12,7 +11,7 @@ from numpy.random import random_sample
 
 
 # Log-likelihood function
-def LL(x: dict, theta):
+def get_ll(x: dict, theta):
 
     # Erase all evidences and apply addEvidence(key,value) for every pairs in x
     theta.setEvidence(x)
@@ -23,12 +22,12 @@ def LL(x: dict, theta):
     return np.log(ll)
 
 
-# Log-likelihood ratio (LLR) function
-def LLR(x: dict, theta, theta_hat):
+# Log-likelihood ratio (llr) function
+def get_llr(x: dict, theta, theta_hat):
 
     # Compute log-likelihoods
-    ll_theta = LL(x, theta)
-    ll_theta_hat = LL(x, theta_hat)
+    ll_theta = get_ll(x, theta)
+    ll_theta_hat = get_ll(x, theta_hat)
 
     return ll_theta_hat - ll_theta
 
@@ -112,7 +111,9 @@ def sample_from_cn(cn, n: int, where: str) -> list:
     elif where == "outside":
         sample = sample_outside
     else:
-        raise  # TODO
+        msg = "'where' can be either 'inside' or 'outside'"
+        print(msg)
+        raise ValueError(msg)
 
     # Draw n random BNs
     k = 0
@@ -175,8 +176,6 @@ def are_all_bns_different(bn_vec) -> None:
 
     print(f"({len(signatures)}/{len(bn_vec)} different BNs.)")
 
-    return None
-
 
 # Add counts of events to a BN
 def add_counts_to_bn(bn, data):
@@ -198,12 +197,10 @@ def add_counts_to_bn(bn, data):
 
         bn.cpt(node).fillWith(counts_array.flatten().tolist())
 
-    return
-
 
 # Compact a dictionary to be printable
 def compact_dict(d):
-    new_dict = dict()
+    new_dict = {}
     for k, v in d.items():
         if isinstance(v, np.ndarray):
             new_dict[k] = (
@@ -222,7 +219,7 @@ def get_noisy_bn(bn, scale: float):
 
     bn_noisy = gum.BayesNet(bn)
 
-    # For each node ...
+    # For each node X ...
     for node in bn.names():
 
         # Get the joint P(X, Pa(X))

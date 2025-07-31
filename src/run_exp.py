@@ -1,5 +1,5 @@
 import gc
-import multiprocessing
+import multiprocessing  # noqa: F401, W0611
 from itertools import product
 
 from joblib import Parallel, delayed
