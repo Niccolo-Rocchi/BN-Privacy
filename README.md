@@ -1,5 +1,7 @@
 # Towards Privacy-Aware Bayesian Networks: A Credal Approach
 
+Code for paper ["Towards Privacy-Aware Bayesian Networks: A Credal Approach"](https://doi.org/10.3233/FAIA251419) presented at [ECAI 2025](https://ecai2025.org/).
+
 ## Set up Python environment
 
 Create and activate a Python virtual environment with: 
