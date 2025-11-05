@@ -1,12 +1,12 @@
 import math
-from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
 import pyagrum as gum
 
 from src.config import get_base_path, set_global_seed
-from src.utils import add_counts_to_bn, get_noisy_bn, random_product
+from src.utils import (add_counts_to_bn, get_min_max_bns, get_noisy_bn,
+                       random_product, safe_assert)
 
 
 def run_inferences(exp, ess, eps, config):
@@ -118,9 +118,9 @@ def get_cond(
     inst = gum.Instantiation(cpt)
     inst[x_var] = x_value
     if not parents:
-        assert len(bn.parents(x_var)) == 0
+        safe_assert(len(bn.parents(x_var)) == 0)
     else:
-        assert bn.parents(x_var) == set(bn.ids(parents.keys()))
+        safe_assert(bn.parents(x_var) == set(bn.ids(parents.keys())))
         for var in parents.keys():
             inst[var] = parents[var]
 
@@ -171,7 +171,7 @@ def run_inference_bn(bn, target: str, evid_vec):
     cov.remove(target)
 
     # Debug
-    assert len(cov) == bn.size() - 1
+    safe_assert(len(cov) == bn.size() - 1)
 
     # Create object for inference
     bn_ie = gum.LazyPropagation(bn)
@@ -186,8 +186,8 @@ def run_inference_bn(bn, target: str, evid_vec):
         probs.append(prob)
 
     # Debug
-    assert len(mpes) == len(evid_vec)
-    assert len(probs) == len(evid_vec)
+    safe_assert(len(mpes) == len(evid_vec))
+    safe_assert(len(probs) == len(evid_vec))
 
     return mpes, probs
 
@@ -199,15 +199,12 @@ def run_inference_cn(cn, target: str, evid_vec, exp: str):
     """
 
     # Store information
-    with TemporaryDirectory() as tmp_path:
-        cn.saveBNsMinMax(f"{tmp_path}/bn_min_{exp}.bif", f"{tmp_path}/bn_max_{exp}.bif")
-        bn_min = gum.loadBN(f"{tmp_path}/bn_min_{exp}.bif")
-        bn_max = gum.loadBN(f"{tmp_path}/bn_max_{exp}.bif")
+    bn_min, bn_max = get_min_max_bns(cn, exp)
     cov = sorted(list(bn_min.names()))
     cov.remove(target)
 
     # Debug
-    assert len(cov) == bn_min.size() - 1
+    safe_assert(len(cov) == bn_min.size() - 1)
 
     # Compute all combinations of evidence
     mpes = []
@@ -221,8 +218,8 @@ def run_inference_cn(cn, target: str, evid_vec, exp: str):
         probs_alt.append(prob_alt)
 
     # Debug
-    assert len(mpes) == len(evid_vec)
-    assert len(probs) == len(evid_vec)
-    assert len(probs_alt) == len(evid_vec)
+    safe_assert(len(mpes) == len(evid_vec))
+    safe_assert(len(probs) == len(evid_vec))
+    safe_assert(len(probs_alt) == len(evid_vec))
 
     return mpes, probs, probs_alt

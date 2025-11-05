@@ -1,13 +1,12 @@
-import io
-import re
-from collections import defaultdict
-from contextlib import redirect_stdout
+import sys
+from math import prod
+from tempfile import TemporaryDirectory
 
+import hopsy
 import numpy as np
 import pyagrum as gum
-from more_itertools import random_product
-from numpy import random
-from numpy.random import random_sample
+
+IN_PYTEST = "pytest" in sys.modules
 
 
 # Log-likelihood function
@@ -30,135 +29,6 @@ def get_llr(x: dict, theta, theta_hat):
     ll_theta_hat = get_ll(x, theta_hat)
 
     return ll_theta_hat - ll_theta
-
-
-# Parse the credal network
-def parse_cn(cn) -> tuple:
-
-    # Get the DAG
-    dag = gum.BayesNet(cn.current_bn())
-
-    # Cast CN to string
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        print(cn)
-    cn_str = buffer.getvalue()
-
-    credal_dict = defaultdict(lambda: defaultdict(list))
-    current_var = None
-
-    lines = cn_str.strip().split("\n")
-
-    for line in lines:
-        line = line.strip()
-
-        # Variable identification
-        var_match = re.match(r"^([A-Za-z0-9_]+):", line)
-        if var_match:
-            current_var = var_match.group(1)
-            continue
-
-        if current_var is None or not line:
-            continue
-
-        # CPT identification
-        cpt_match = re.match(r"^<([^>]*)>\s*:\s*(.*)", line)
-        if cpt_match:
-            condition = f"<{cpt_match.group(1).strip()}>"
-            raw_cpt = cpt_match.group(2)
-
-            # Extraction of inner lists: [[x,x,x], [x,x,x], ...]
-            vectors = re.findall(r"\[\s*([^\[\]]+?)\s*\]", raw_cpt)
-            for vec in vectors:
-                prob_vec = [float(x.strip()) for x in vec.split(",")]
-                credal_dict[current_var][condition].append(prob_vec)
-
-    params = []
-    for var in credal_dict:
-        for cond, vectors in credal_dict[var].items():
-            params.append((var, cond, vectors))
-
-    return dag, params
-
-
-# Compute a random subset of BNs from the CN
-def sample_from_cn(cn, n: int, where: str) -> list:
-    """
-    Sample random BNs from the CN.
-
-    Parameters:
-    - `cn`: the given CN.
-    - `n`: number of BNs to extract from the CN.
-    - `where`: can be `inside` or `outside`.
-        "inside": the BNs are taken from within the credal set;
-        "outside": the BNs are vertices of the credal set.
-    """
-
-    random.seed(42)
-
-    # Parse CN
-    dag, params = parse_cn(cn)
-
-    # Store variables indexes
-    var_idx = {
-        var: [idx for idx, elem in enumerate(params) if elem[0] == var]
-        for var in dag.names()
-    }
-
-    # Cases
-    if where == "inside":
-        sample = sample_inside
-    elif where == "outside":
-        sample = sample_outside
-    else:
-        msg = "'where' can be either 'inside' or 'outside'"
-        print(msg)
-        raise ValueError(msg)
-
-    # Draw n random BNs
-    k = 0
-    bns = []
-    while k < n:
-
-        # Init an empty BN
-        bn = gum.BayesNet(dag)
-
-        # Sample from CN
-        next_sample = next(sample(params))
-
-        # Fill the BN's CPTs
-        for var in dag.names():
-            array = np.array([(next_sample[idx]) for idx in var_idx.get(var)]).flatten()
-            bn.cpt(var).fillWith(array)
-
-        bns.append(bn)
-        k += 1
-
-    # Debug
-    # assert(n == len(bns))
-
-    return bns
-
-
-# Given a parsed CN called `params`, sample a BN inside the credal set
-def sample_inside(params):
-
-    p_1 = [
-        (vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0]
-        for _, _, vecs in params
-    ]
-    p = [[x, 1 - x] for x in p_1]
-
-    # Debug
-    # assert(np.sum(np.array(p), axis=1).all() == 1.)
-
-    yield p
-
-
-# Given a parsed CN called `params`, sample a vertex of the credal set
-def sample_outside(params):
-
-    yield random_product(*[vecs for _, _, vecs in params])
 
 
 # Check BNs sampled from a CN
@@ -243,3 +113,153 @@ def get_noisy_bn(bn, scale: float):
     bn_noisy.check()  # OK if = ().
 
     return bn_noisy
+
+
+# Only perform an `assert` if code is running in `pytest`
+def safe_assert(condition):
+    if IN_PYTEST:
+        assert condition
+
+
+# Extract BN min and BN max from a CN
+def get_min_max_bns(cn, exp: str):
+
+    with TemporaryDirectory() as tmp_path:
+        cn.saveBNsMinMax(f"{tmp_path}/bn_min_{exp}.bif", f"{tmp_path}/bn_max_{exp}.bif")
+        bn_min = gum.loadBN(f"{tmp_path}/bn_min_{exp}.bif")
+        bn_max = gum.loadBN(f"{tmp_path}/bn_max_{exp}.bif")
+
+    return bn_min, bn_max
+
+
+# Sample from a credal set K(x | pi_x), i.e., a constrained polytope.
+def sample_from_cset(vec_min, vec_max):
+    """
+    A credal set is a polytope in a space of #X parameters, defined by a:
+     - Multi-dimensional rectangle, i.e., inequality constraints Ax <= b, and
+     - Hyperplane (provided all the variables sum up to 1), i.e., equality constraints A_eq x = b_eq.
+    """
+
+    # Define the rectangle
+    n_par = len(vec_min)
+    A = np.concat((np.eye(n_par), -np.eye(n_par)), axis=0)
+    b = np.array(np.concatenate((vec_max, -vec_min)))
+    rectangle = hopsy.Problem(A=A, b=b)
+
+    # Define the hyperplane
+    A_eq = np.array([np.ones(n_par)])
+    b_eq = np.array([1.0])
+
+    # Define the polytope as a constrained rectangle
+    constrained_rectangle = hopsy.add_equality_constraints(
+        rectangle, A_eq=A_eq, b_eq=b_eq
+    )
+
+    # Sample from the polytope
+    mc = hopsy.MarkovChain(constrained_rectangle)
+    rng = hopsy.RandomNumberGenerator(42)
+    _, constrained_samples = hopsy.sample(mc, rng, n_samples=1, thinning=10)
+    constrained_samples = constrained_samples.flatten()
+
+    # Debug
+    safe_assert(np.all(vec_min <= vec_max))
+    safe_assert(n_par == len(vec_max))
+    safe_assert(n_par == A.shape[1])
+    safe_assert(n_par == A_eq.shape[1])
+    safe_assert(n_par == len(constrained_samples))
+
+    return constrained_samples
+
+
+# Sample from two esxtreme CPTs
+def sample_from_cpts(cpt_min, cpt_max) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # Sample conditional distributions
+    cpt_sample = []
+    for row in range(cpt_min.shape[0]):
+
+        vec_min = cpt_min[row, :]
+        vec_max = cpt_max[row, :]
+
+        # Sample from polytope
+        vec_sample = sample_from_cset(vec_min, vec_max)
+        cpt_sample.append(vec_sample)
+
+    cpt_sample = np.array(cpt_sample).flatten()
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(prod(cpt_min.shape) == prod(cpt_max.shape))
+    safe_assert(len(cpt_sample) == prod(cpt_min.shape))
+
+    return cpt_sample
+
+
+# BNs sampler from a CN
+def sample_from_cn(cn, exp: str, n: int):
+
+    # Get the DAG and extreme BNs
+    dag = gum.BayesNet(cn.current_bn())
+    bn_min, bn_max = get_min_max_bns(cn, exp)
+
+    # Draw n random BNs
+    bns = []
+    for _ in range(n):
+
+        # Init an empty BN
+        bn = gum.BayesNet(dag)
+
+        # For each variable ...
+        for var in dag.names():
+
+            # ... sample from the CN CPT, ...
+            cpt_sample = sample_from_cpts(bn_min.cpt(var), bn_max.cpt(var))
+
+            # ... and fill the BN's CPT
+            bn.cpt(var).fillWith(cpt_sample)
+
+        bns.append(bn)
+
+        # Debug
+        safe_assert(check_consistency(bn, bn_min, bn_max))
+
+    # Debug
+    safe_assert(n == len(bns))
+
+    return bns
+
+
+# Check the consistency of a BN as sampled from a CN
+def check_consistency(bn, bn_min, bn_max) -> bool:
+
+    for var in bn.names():
+        bn_cpt = np.atleast_2d(bn.cpt(var).topandas())
+        bn_min_cpt = np.array(bn_min.cpt(var).topandas())
+        bn_max_cpt = np.array(bn_max.cpt(var).topandas())
+
+        # Check if probabilities sum to 1
+        sum_vec = np.sum(bn_cpt, axis=1)
+        probability_integrity = np.all(np.abs(sum_vec - 1) < 1e-5)
+
+        # Check if the BN CPT is >= min CPT
+        min_integrity = np.all(bn_cpt >= bn_min_cpt)
+
+        # Check if the BN CPT is <= max CPT
+        max_integrity = np.all(bn_cpt <= bn_max_cpt)
+
+        integrity = probability_integrity and min_integrity and max_integrity
+
+        if integrity:
+            continue
+        else:
+            print("probability_integrity: ", probability_integrity)
+            print("min_integrity: ", min_integrity)
+            print("max_integrity: ", max_integrity)
+            return False
+
+    return True

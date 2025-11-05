@@ -9,7 +9,7 @@ from sklearn import metrics
 
 from src.config import get_base_path, set_global_seed
 from src.utils import (add_counts_to_bn, get_ll, get_llr, get_noisy_bn,
-                       sample_from_cn)
+                       safe_assert, sample_from_cn)
 
 
 # Get the attack power related to a fixed error
@@ -104,8 +104,8 @@ def get_eps(exp, ess, config):
     pool_ss = int(gpop_ss * config["pool_prop"])
 
     # Debug
-    assert gpop_ss == gpop.shape[0]
-    assert n_nodes == gpop.shape[1]
+    safe_assert(gpop_ss == gpop.shape[0])
+    safe_assert(n_nodes == gpop.shape[1])
 
     bn_theta_vec = []
     bn_theta_hat_vec = []
@@ -138,14 +138,14 @@ def get_eps(exp, ess, config):
         cn_vec.append(cn)
 
         # Debug
-        assert len(pool) == sum(gpop[f"in-pool-{sample}"])
-        assert len(pool) == pool_ss
-        assert len(rpop) == rpop_ss
+        safe_assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
+        safe_assert(len(pool) == pool_ss)
+        safe_assert(len(rpop) == rpop_ss)
 
     # Debug
-    assert len(bn_theta_vec) == n_samples
-    assert len(bn_theta_hat_vec) == n_samples
-    assert len(cn_vec) == n_samples
+    safe_assert(len(bn_theta_vec) == n_samples)
+    safe_assert(len(bn_theta_hat_vec) == n_samples)
+    safe_assert(len(cn_vec) == n_samples)
 
     # Run MIA against CN
     auc_cn_vec = []
@@ -157,7 +157,7 @@ def get_eps(exp, ess, config):
         bn_theta_ie = gum.LazyPropagation(bn_theta_vec[sample])
 
         # Extract random subset within simplex
-        bns_sample = sample_from_cn(cn, n_bns, "inside")
+        bns_sample = sample_from_cn(cn, exp, n_bns)
 
         # Get the maximum likelihood BN
         best_bn = get_maxll_bn(bns_sample, rpop)
@@ -258,8 +258,8 @@ def attack_cn_bn(exp, ess, config):
     pool_ss = int(gpop_ss * config["pool_prop"])
 
     # Debug
-    assert gpop_ss == gpop.shape[0]
-    assert n_nodes == gpop.shape[1]
+    safe_assert(gpop_ss == gpop.shape[0])
+    safe_assert(n_nodes == gpop.shape[1])
 
     bn_theta_vec = []
     bn_theta_hat_vec = []
@@ -292,14 +292,14 @@ def attack_cn_bn(exp, ess, config):
         cn_vec.append(cn)
 
         # Debug
-        assert len(pool) == sum(gpop[f"in-pool-{sample}"])
-        assert len(pool) == pool_ss
-        assert len(rpop) == rpop_ss
+        safe_assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
+        safe_assert(len(pool) == pool_ss)
+        safe_assert(len(rpop) == rpop_ss)
 
     # Debug
-    assert len(bn_theta_vec) == n_samples
-    assert len(bn_theta_hat_vec) == n_samples
-    assert len(cn_vec) == n_samples
+    safe_assert(len(bn_theta_vec) == n_samples)
+    safe_assert(len(bn_theta_hat_vec) == n_samples)
+    safe_assert(len(cn_vec) == n_samples)
 
     # Compute theoretical bound
     compl = bn.dim()
@@ -322,7 +322,7 @@ def attack_cn_bn(exp, ess, config):
         bn_theta_ie = gum.LazyPropagation(bn_theta_vec[sample])
 
         # Extract random subset within simplex
-        bns_sample = sample_from_cn(cn, n_bns, "inside")
+        bns_sample = sample_from_cn(cn, exp, n_bns)
 
         # Get the maximum likelihood BN
         best_bn = get_maxll_bn(bns_sample, rpop)
