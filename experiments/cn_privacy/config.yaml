@@ -10,6 +10,7 @@ meta_file: exp_meta.txt                             # File of metadata
 # Models
 n_nodes_vec: '[10, 20, 50, 100]'                    # List of models' number of nodes
 edge_ratio_vec: '[1, 2, 4]'                         # List of models' edge ratio
+n_modmax: 2                                         # Maximum number of variables categories
 
 # Data
 gpop_ss: 10000                                      # Sample size of general population

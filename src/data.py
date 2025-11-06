@@ -89,7 +89,7 @@ def generate_randombn(config):
 
         with open(f'{results_path}/{config["meta_file"]}', "a") as m:
             m.write(
-                f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
+                f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()} Max categories: {n_modmax}\n"
             )
 
         # ... and generate gpop from BN
