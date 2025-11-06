@@ -1,12 +1,12 @@
 import math
-from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
 import pyagrum as gum
+from more_itertools import random_product
 
 from src.config import get_base_path, set_global_seed
-from src.utils import add_counts_to_bn, get_noisy_bn, random_product
+from src.utils import (add_counts_to_bn, get_min_max_bns, noisy_bn, safe_assert)
 
 
 def run_inferences(exp, ess, eps, config):
@@ -40,7 +40,7 @@ def run_inferences(exp, ess, eps, config):
 
     # Learn noisy BN from gpop
     scale = (2 * bn.size()) / (len(gpop) * eps)
-    bn_noisy = get_noisy_bn(bn, scale)
+    bn_noisy = noisy_bn(bn, scale)
 
     # Run inferences
     gt_mpes, _ = run_inference_bn(gt, target, evid_vec)
@@ -89,15 +89,14 @@ def mpe_cn(
     bn_min: gum.BayesNet, bn_max: gum.BayesNet, target: str, children: dict
 ) -> tuple:
     """
-    Get the MPE of a CN as: argmax_t log P_lower(target=t | children),
-    together with its lower probability.
-    bn_min and bn_max derive from a binary CN.
-    The DAG is assumed to be a Naive Bayes model with `target` the target variable.
-    Return the MPE, its probability, and the lower probability of the alternative class.
+    Get the MPE of a CN as: argmax_t log P_lower(target=t | children).
+    bn_min and bn_max derive from a CN.
+    The DAG is a naive Bayes with `target` a binary target variable.
+    Returns the MPE, its probability, and the lower probability of the alternative class.
     """
 
-    lp1 = get_lower_posterior(bn_min, bn_max, target, 1, children)
-    lp0 = get_lower_posterior(bn_min, bn_max, target, 0, children)
+    lp1 = nb_log_lower_posterior(bn_min, bn_max, target, 1, children)
+    lp0 = nb_log_lower_posterior(bn_min, bn_max, target, 0, children)
 
     if lp1 > lp0:
         return (1, math.exp(lp1), math.exp(lp0))
@@ -106,64 +105,64 @@ def mpe_cn(
 
 
 # Get a value from a BN's CPT
-def get_cond(
+def cpt_value(
     bn: gum.BayesNet, x_var: str, x_value: float, parents: dict = None
 ) -> float:
     """
     Get P(X=x | parents) from the BN's CPT of X.
-    x_var is X, and x_value is x.
+    `x_var` is the X name, while `x_value` is x.
     """
 
     cpt = bn.cpt(x_var)
     inst = gum.Instantiation(cpt)
     inst[x_var] = x_value
-    if not parents:
-        assert len(bn.parents(x_var)) == 0
-    else:
-        assert bn.parents(x_var) == set(bn.ids(parents.keys()))
+
+    if parents:
         for var in parents.keys():
             inst[var] = parents[var]
+        safe_assert(bn.parents(x_var) == set(bn.ids(parents.keys())))
+    else:
+        safe_assert(len(bn.parents(x_var)) == 0)
 
     return max(cpt.get(inst), 1e-10)  # Smoothing
 
 
-# Get a Naive Bayes log-joint
-def get_naivebayes_log_joint(
+# Get a naive Bayes log-joint
+def nb_log_joint(
     bn: gum.BayesNet, target: str, t: float, children: dict
 ) -> float:
     """
-    Get log[P(target=t, children)] from the BN's CPT of `target`.
-    The BN is assumed to be a Naive Bayes model with `target` the target variable.
+    Get log[P(target=t, children)] by exploiting the BN factorization.
+    The DAG is a naive Bayes with `target` a binary target variable.
     """
 
-    sum_log = 0
+    sum_log = math.log(cpt_value(bn, target, t))
     for var, val in children.items():
-        sum_log += math.log(get_cond(bn, var, val, {target: t}))
-    sum_log += math.log(get_cond(bn, target, t))
+        sum_log += math.log(cpt_value(bn, var, val, {target: t}))
 
     return sum_log
 
 
 # Get the lower posterior from a CN
-def get_lower_posterior(
+def nb_log_lower_posterior(
     bn_min: gum.BayesNet, bn_max: gum.BayesNet, target: str, t: float, children: dict
 ) -> float:
     """
     Get log P_lower(target=t | children).
-    bn_min and bn_max derive from a binary CN.
-    The DAG is assumed to be a Naive Bayes model with `target` the target variable.
+    bn_min and bn_max derive from a CN.
+    The DAG is a naive Bayes with `target` a binary target variable.
     """
 
-    lp_lower = get_naivebayes_log_joint(bn_min, target, t, children)
-    lp_upper = get_naivebayes_log_joint(bn_max, target, 1 - t, children)
+    l_lower = nb_log_joint(bn_min, target, t, children)
+    l_upper = nb_log_joint(bn_max, target, 1 - t, children)
 
-    return lp_lower - lp_upper - math.log1p(math.exp(lp_lower - lp_upper))
+    return l_lower - l_upper - math.log1p(math.exp(l_lower - l_upper))
 
 
 # Run inferences on a BN
 def run_inference_bn(bn, target: str, evid_vec):
     """
-    The BN is assumed to be a Naive Bayes model with `target` the target variable.
+    The BN is assumed to be a naive Bayes model with `target` the target variable.
     """
 
     # Store information
@@ -171,7 +170,7 @@ def run_inference_bn(bn, target: str, evid_vec):
     cov.remove(target)
 
     # Debug
-    assert len(cov) == bn.size() - 1
+    safe_assert(len(cov) == bn.size() - 1)
 
     # Create object for inference
     bn_ie = gum.LazyPropagation(bn)
@@ -186,8 +185,8 @@ def run_inference_bn(bn, target: str, evid_vec):
         probs.append(prob)
 
     # Debug
-    assert len(mpes) == len(evid_vec)
-    assert len(probs) == len(evid_vec)
+    safe_assert(len(mpes) == len(evid_vec))
+    safe_assert(len(probs) == len(evid_vec))
 
     return mpes, probs
 
@@ -195,19 +194,16 @@ def run_inference_bn(bn, target: str, evid_vec):
 # Run inferences on a CN
 def run_inference_cn(cn, target: str, evid_vec, exp: str):
     """
-    The CN is assumed to be a Naive Bayes model with `target` the target variable.
+    The CN is assumed to be a naive Bayes model with `target` the target variable.
     """
 
     # Store information
-    with TemporaryDirectory() as tmp_path:
-        cn.saveBNsMinMax(f"{tmp_path}/bn_min_{exp}.bif", f"{tmp_path}/bn_max_{exp}.bif")
-        bn_min = gum.loadBN(f"{tmp_path}/bn_min_{exp}.bif")
-        bn_max = gum.loadBN(f"{tmp_path}/bn_max_{exp}.bif")
+    bn_min, bn_max = get_min_max_bns(cn, exp)
     cov = sorted(list(bn_min.names()))
     cov.remove(target)
 
     # Debug
-    assert len(cov) == bn_min.size() - 1
+    safe_assert(len(cov) == bn_min.size() - 1)
 
     # Compute all combinations of evidence
     mpes = []
@@ -221,8 +217,8 @@ def run_inference_cn(cn, target: str, evid_vec, exp: str):
         probs_alt.append(prob_alt)
 
     # Debug
-    assert len(mpes) == len(evid_vec)
-    assert len(probs) == len(evid_vec)
-    assert len(probs_alt) == len(evid_vec)
+    safe_assert(len(mpes) == len(evid_vec))
+    safe_assert(len(probs) == len(evid_vec))
+    safe_assert(len(probs_alt) == len(evid_vec))
 
     return mpes, probs, probs_alt

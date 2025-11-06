@@ -71,7 +71,7 @@ python -m experiments.<name>.main
 Run tests with:
 
 ```bash
-pytest
+pytest [--cov=src] [--cov-report=term-missing] [--capture=no]
 ```
 
 Test results are available at: 

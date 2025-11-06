@@ -1,5 +1,6 @@
 from itertools import product
 from pprint import pformat
+from numpy.random import randint
 
 import pyagrum as gum
 
@@ -23,8 +24,9 @@ def generate_naivebayes(config):
     create_clean_dir(data_path)
     create_clean_dir(results_path)
 
-    # Set BN (Naive Bayes) structure
-    bn_str_gen = (f'{config["target_var"]}->X{i}' for i in range(config["n_nodes"] - 1))
+    # Set BN (naive Bayes) structure
+    n_modmax = config["n_modmax"]
+    bn_str_gen = (f'{config["target_var"]}->X{i}[{randint(2, n_modmax+1)}]' for i in range(config["n_nodes"] - 1))
     bn_str = "; ".join(bn_str_gen)
 
     # For each model ...
@@ -75,18 +77,19 @@ def generate_randombn(config):
 
     n_nodes_vec = eval(config["n_nodes_vec"])
     edge_ratio_vec = eval(config["edge_ratio_vec"])
+    n_modmax = config["n_modmax"]
 
     # For each configuration ...
     for i, (n, r) in enumerate(product(n_nodes_vec, edge_ratio_vec)):
 
         # ... generate BN, ...
         bn_gen = gum.BNGenerator()
-        bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=2)
+        bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=n_modmax)
         gum.saveBN(bn, f"{bns_path}/exp{i}.bif")
 
         with open(f'{results_path}/{config["meta_file"]}', "a") as m:
             m.write(
-                f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
+                f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()} Max categories: {n_modmax}\n"
             )
 
         # ... and generate gpop from BN
