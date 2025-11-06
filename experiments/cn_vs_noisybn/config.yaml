@@ -10,6 +10,7 @@ meta_file: exp_meta.txt                             # File of metadata
 # Models (Naive Bayes)
 target_var: 'T'                                     # Target variable
 n_nodes: 10                                         # Number of nodes for each BN model
+n_modmax: 2                                         # Maximum number of categories for covariates
 n_models: 10                                        # Number of models to evaluate
 
 # Data
