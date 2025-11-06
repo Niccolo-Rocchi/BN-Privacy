@@ -8,7 +8,7 @@ from scipy.stats import norm
 from sklearn import metrics
 
 from src.config import get_base_path, set_global_seed
-from src.utils import (add_counts_to_bn, get_ll, get_llr, get_noisy_bn,
+from src.utils import (add_counts_to_bn, get_ll, get_llr, noisy_bn,
                        safe_assert, sample_from_cn)
 
 
@@ -196,7 +196,7 @@ def get_eps(exp, ess, config):
 
             # Get noisy BN
             scale = (2 * bn_theta_hat.size()) / (len(pool) * eps)
-            bn_noisy = get_noisy_bn(bn_theta_hat, scale)
+            bn_noisy = noisy_bn(bn_theta_hat, scale)
             bn_noisy_ie = gum.LazyPropagation(bn_noisy)
 
             try:

@@ -82,7 +82,7 @@ def compact_dict(d):
 
 
 # Create noisy BN by adding Laplacian noise (Zhang et al., 2017)
-def get_noisy_bn(bn, scale: float):
+def noisy_bn(bn, scale: float):
 
     bn_ie = gum.LazyPropagation(bn)
     bn_ie.makeInference()
@@ -136,8 +136,8 @@ def get_min_max_bns(cn, exp: str):
 def sample_from_cset(vec_min, vec_max):
     """
     A credal set is a polytope in a space of #X parameters, defined by a:
-     - Multi-dimensional rectangle, i.e., inequality constraints Ax <= b, and
-     - Hyperplane (provided all the variables sum up to 1), i.e., equality constraints A_eq x = b_eq.
+     - Multi-dimensional rectangle, i.e., inequality constraint Ax <= b, and
+     - Hyperplane (provided all the variables sum up to 1), i.e., equality constraint A_eq x = b_eq.
     """
 
     # Define the rectangle
