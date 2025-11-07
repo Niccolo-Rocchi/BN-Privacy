@@ -6,7 +6,7 @@ import pyagrum as gum
 from more_itertools import random_product
 
 from src.config import get_base_path, set_global_seed
-from src.utils import (add_counts_to_bn, get_min_max_bns, noisy_bn, safe_assert)
+from src.utils import add_counts_to_bn, get_min_max_bns, noisy_bn, safe_assert
 
 
 def run_inferences(exp, ess, eps, config):
@@ -128,9 +128,7 @@ def cpt_value(
 
 
 # Get a naive Bayes log-joint
-def nb_log_joint(
-    bn: gum.BayesNet, target: str, t: float, children: dict
-) -> float:
+def nb_log_joint(bn: gum.BayesNet, target: str, t: float, children: dict) -> float:
     """
     Get log[P(target=t, children)] by exploiting the BN factorization.
     The DAG is a naive Bayes with `target` a binary target variable.
