@@ -1,8 +1,8 @@
 from itertools import product
 from pprint import pformat
-from numpy.random import randint
 
 import pyagrum as gum
+from numpy.random import randint
 
 from src.config import create_clean_dir, get_base_path, set_global_seed
 from src.utils import compact_dict
@@ -26,7 +26,10 @@ def generate_naivebayes(config):
 
     # Set BN (naive Bayes) structure
     n_modmax = config["n_modmax"]
-    bn_str_gen = (f'{config["target_var"]}->X{i}[{randint(2, n_modmax+1)}]' for i in range(config["n_nodes"] - 1))
+    bn_str_gen = (
+        f'{config["target_var"]}->X{i}[{randint(2, n_modmax+1)}]'
+        for i in range(config["n_nodes"] - 1)
+    )
     bn_str = "; ".join(bn_str_gen)
 
     # For each model ...
