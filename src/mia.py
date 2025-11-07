@@ -8,8 +8,10 @@ from scipy.stats import norm
 from sklearn import metrics
 
 from src.config import get_base_path, set_global_seed
-from src.utils import (add_counts_to_bn, get_ll, get_llr, noisy_bn,
-                       safe_assert, sample_from_cn)
+from src.utils import (get_llr, noisy_bn,
+                       safe_assert)
+from src.attacks import *
+from src.defenses import *
 
 
 # Get the attack power related to a fixed error
@@ -53,29 +55,7 @@ def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
     return power_vec, auc
 
 
-# Get the maximum likelihood BN
-def get_maxll_bn(bns_sample, rpop):
-    """
-    Given a list `bns_sample` of BNs,
-    find argmax_{BN in bns_sample} ll(BN | rpop),
-    where ll is the log-likelihood function.
-    """
 
-    maxll_bn = None
-    maxll = -np.inf
-
-    for bn in bns_sample:
-
-        # Estimate the likelihood of rpop
-        bn_ie = gum.LazyPropagation(bn)
-        llr_im = rpop.apply(lambda x: get_ll(x.to_dict(), bn_ie), axis=1).dropna()
-        llr = np.sum(llr_im)
-
-        if llr > maxll:
-            maxll_bn = bn
-            maxll = llr
-
-    return maxll_bn
 
 
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
@@ -91,9 +71,10 @@ def get_eps(exp, ess, config):
     eps_vec = eval(config["ess_dict"][ess])
     results_path = base_path / config["results_path"]
     n_samples = config["n_samples"]
-    n_bns = config["n_bns"]
     error = eval(config["error"])
     tol = config["tol"]
+    def_mec = eval(config["def_mec"])
+    atk_mec = eval(config["atk_mec"])
 
     # Read data
     gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
@@ -130,11 +111,8 @@ def get_eps(exp, ess, config):
         learner.useSmoothingPrior(1e-5)
         bn_theta_hat_vec.append(learner.learnParameters(bn.dag()))
 
-        # ... and estimate CN from pool (by local IDM)
-        bn_counts = gum.BayesNet(bn)
-        add_counts_to_bn(bn_counts, pool)
-        cn = gum.CredalNet(bn_counts)
-        cn.idmLearning(ess)
+        # ... and run Defense mechanism: estimate the CN
+        cn = def_mec(bn, ess, pool)
         cn_vec.append(cn)
 
         # Debug
@@ -156,12 +134,9 @@ def get_eps(exp, ess, config):
         cn = cn_vec[sample]
         bn_theta_ie = gum.LazyPropagation(bn_theta_vec[sample])
 
-        # Extract random subset within simplex
-        bns_sample = sample_from_cn(cn, exp, n_bns)
-
-        # Get the maximum likelihood BN
-        best_bn = get_maxll_bn(bns_sample, rpop)
-        bn_ie = gum.LazyPropagation(best_bn)
+        # Attack mechanism: extract a BN from the CN
+        ext_bn = atk_mec(cn, rpop, exp, config)
+        bn_ie = gum.LazyPropagation(ext_bn)
 
         # MIA
         try:
@@ -246,8 +221,9 @@ def attack_cn_bn(exp, ess, config):
     # Init hyperp.
     results_path = base_path / config["results_path"]
     n_samples = config["n_samples"]
-    n_bns = config["n_bns"]
     error = eval(config["error"])
+    def_mec = eval(config["def_mec"])
+    atk_mec = eval(config["atk_mec"])
 
     # Read data
     gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
@@ -284,11 +260,8 @@ def attack_cn_bn(exp, ess, config):
         learner.useSmoothingPrior(1e-5)
         bn_theta_hat_vec.append(learner.learnParameters(bn.dag()))
 
-        # ... and estimate CN from pool (by local IDM)
-        bn_counts = gum.BayesNet(bn)
-        add_counts_to_bn(bn_counts, pool)
-        cn = gum.CredalNet(bn_counts)
-        cn.idmLearning(ess)
+        # ... and run Defense mechanism: estimate the CN from BN
+        cn = def_mec(bn, ess, pool)
         cn_vec.append(cn)
 
         # Debug
@@ -321,12 +294,9 @@ def attack_cn_bn(exp, ess, config):
         cn = cn_vec[sample]
         bn_theta_ie = gum.LazyPropagation(bn_theta_vec[sample])
 
-        # Extract random subset within simplex
-        bns_sample = sample_from_cn(cn, exp, n_bns)
-
-        # Get the maximum likelihood BN
-        best_bn = get_maxll_bn(bns_sample, rpop)
-        bn_ie = gum.LazyPropagation(best_bn)
+        # Attack mechanism: extract a BN from the CN
+        ext_bn = atk_mec(cn, rpop, exp, config)
+        bn_ie = gum.LazyPropagation(ext_bn)
 
         # MIA
         try:

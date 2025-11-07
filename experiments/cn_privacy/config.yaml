@@ -18,10 +18,16 @@ rpop_prop: 0.5                                      # Sample size of reference p
 pool_prop: 0.25                                     # Sample size of pool population = gpop_ss * pool_prop
 
 # MIA
+def_mec: 'def_idm'                                  # Defense mechanisms to consider
+atk_mec: 'atk_mle'                                  # Attack mechanisms to consider
 n_samples: 20                                       # Number of data samples
-n_bns: 500                                          # Number of BNs to sample within the CN
 error: 'np.logspace(-4, 0, 20, endpoint=False)'     # Type-I errors vector
+
+# DEF-IDM
 ess_vec: '[1, 10, 50, 100, 1000]'                   # List of ESS
+
+# ATK-MLE
+n_bns: 500                                          # Number of BNs to sample within the CN
 
 # Other
 seed: 42                                            # Global seed

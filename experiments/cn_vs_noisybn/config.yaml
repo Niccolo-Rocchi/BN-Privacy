@@ -19,10 +19,13 @@ rpop_prop: 0.5                                      # Sample size of reference p
 pool_prop: 0.25                                     # Sample size of pool population = gpop_ss * pool_prop
 
 # MIA
+def_mec: 'def_idm'                                  # Defense mechanisms to consider
+atk_mec: 'atk_mle'                                  # Attack mechanisms to consider
 n_samples: 30                                       # Number of data samples
-n_bns: 50                                           # Number of BNs to sample within the CN
 tol: 0.01                                           # To find eps s.t. |AUC(eps) - AUC(CN)| < tol
 error: 'np.logspace(-4, 0, 25, endpoint=False)'     # Type-I errors vector
+
+# DEF-IDM
 ess_dict:                                           # Eps list to evaluate for each ess
   1:  'np.arange(0.1, 10, 0.1)'
   10: 'np.arange(0.1, 10, 0.1)'
@@ -30,6 +33,9 @@ ess_dict:                                           # Eps list to evaluate for e
   30: 'np.arange(1e-3, 1, 1e-3)'
   40: 'np.arange(5e-6, 1e-2, 5e-6)' 
   50: 'np.arange(5e-7, 5e-4, 5e-7)'
+
+# ATK-MLE
+n_bns: 50                                           # Number of BNs to sample within the CN
 
 # Inferences
 n_infer: 1000                                       # Number of inferences to perform

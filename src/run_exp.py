@@ -6,7 +6,7 @@ from joblib import Parallel, delayed
 
 from src.config import get_base_path
 from src.inference import run_inferences
-from src.membership_attack import attack_cn_bn, get_eps
+from src.mia import attack_cn_bn, get_eps
 
 
 def run_cn_vs_noisybn(config):
