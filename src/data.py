@@ -5,7 +5,7 @@ import numpy as np
 import pyagrum as gum
 from numpy.random import randint
 
-from src.config import create_clean_dir, get_base_path, set_global_seed
+from src.config import create_clean_dir, get_out_path, set_global_seed
 from src.utils import compact_dict
 
 
@@ -15,10 +15,10 @@ def generate_naivebayes(config):
     set_global_seed(config["seed"])
 
     # Set paths
-    base_path = get_base_path(config)
-    bns_path = base_path / config["bns_path"]
-    data_path = base_path / config["data_path"]
-    results_path = base_path / config["results_path"]
+    out_path = get_out_path(config)
+    bns_path = out_path / config["bns_path"]
+    data_path = out_path / config["data_path"]
+    results_path = out_path / config["results_path"]
 
     # Create empty directories
     create_clean_dir(bns_path)
@@ -66,7 +66,7 @@ def generate_naivebayes(config):
 
         # ... create results subdirectories and metadata files
         meta_file_path = (
-            base_path
+            out_path
             / config["results_path"]
             / f'results_nodes{config["n_nodes"]}_ess{ess}'
             / config["meta_file"]
@@ -83,10 +83,10 @@ def generate_randombn(config):
     set_global_seed(config["seed"])
 
     # Set paths
-    base_path = get_base_path(config)
-    bns_path = base_path / config["bns_path"]
-    data_path = base_path / config["data_path"]
-    results_path = base_path / config["results_path"]
+    out_path = get_out_path(config)
+    bns_path = out_path / config["bns_path"]
+    data_path = out_path / config["data_path"]
+    results_path = out_path / config["results_path"]
 
     # Create empty directories
     create_clean_dir(bns_path)

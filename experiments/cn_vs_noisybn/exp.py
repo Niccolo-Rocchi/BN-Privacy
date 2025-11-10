@@ -4,24 +4,29 @@ from itertools import product
 
 from joblib import Parallel, delayed
 
-from src.config import get_base_path, load_config
+from src.config import get_out_path, load_config
 from src.inference import run_inferences
 from src.mia import get_eps
+from src.data import generate_naivebayes
 
 
 def main():
+    
     # Load config
     config = load_config("cn_vs_noisybn")
 
+    # Generate BNs and data
+    generate_naivebayes(config)
+
     # Get base path
-    base_path = get_base_path(config)
+    out_path = get_out_path(config)
 
     # Set number of threads for parallelization
     num_cores = eval(config["num_cores"])
 
     # For each ESS and each model ...
     exp_vec = [
-        f.stem for f in (base_path / config["data_path"]).iterdir() if f.is_file()
+        f.stem for f in (out_path / config["data_path"]).iterdir() if f.is_file()
     ]
     ess_vec = config["ess_dict"].keys()
 
@@ -37,7 +42,7 @@ def main():
 
     # Clean
     gc.collect()
-
+    
 
 if __name__ == "__main__":
 

@@ -1,7 +1,7 @@
 ## Configuration file
 
 # Paths
-base_path: experiments/cn_privacy/output            # Base path for output
+out_path: experiments/cn_privacy/output             # Output path
 bns_path: bns                                       # Where to save ground-truth BNs
 data_path: data                                     # Where to save data as generated from ground-truth BNs
 results_path: results                               # Where to save the experiment results

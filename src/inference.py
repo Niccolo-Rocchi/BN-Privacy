@@ -5,13 +5,13 @@ import pandas as pd
 import pyagrum as gum
 from more_itertools import random_product
 
-from src.config import get_base_path, set_global_seed
+from src.config import get_out_path, set_global_seed
 from src.utils import add_counts_to_bn, get_min_max_bns, noisy_bn, safe_assert
 
 
 def run_inferences(exp, ess, eps, config):
 
-    base_path = get_base_path(config)
+    out_path = get_out_path(config)
     target = config["target_var"]
 
     # Set seed
@@ -24,8 +24,8 @@ def run_inferences(exp, ess, eps, config):
     ]
 
     # Store ground-truth BN
-    gt = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
-    gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
+    gt = gum.loadBN(f'{out_path / config["bns_path"]}/{exp}.bif')
+    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
 
     # Learn BN from gpop
     bn_learner = gum.BNLearner(gpop)
@@ -63,7 +63,7 @@ def run_inferences(exp, ess, eps, config):
     )
 
     res_path = (
-        base_path
+        out_path
         / config["results_path"]
         / f'results_nodes{config["n_nodes"]}_ess{ess}'
     )

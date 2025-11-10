@@ -7,9 +7,9 @@ import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
 
-from src.attacks import * # noqa
-from src.config import get_base_path, set_global_seed
-from src.defenses import * # noqa
+from src.attacks import *  # noqa
+from src.config import get_out_path, set_global_seed
+from src.defenses import *  # noqa
 from src.utils import get_llr, noisy_bn, safe_assert
 
 
@@ -58,14 +58,14 @@ def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 def get_eps(exp, ess, config):
 
     # Get base path
-    base_path = get_base_path(config)
+    out_path = get_out_path(config)
 
     # Set seed
     set_global_seed(config["seed"])
 
     # Init hyperp.
     eps_vec = eval(config["ess_dict"][ess])
-    results_path = base_path / config["results_path"]
+    results_path = out_path / config["results_path"]
     n_samples = config["n_samples"]
     error = eval(config["error"])
     tol = config["tol"]
@@ -73,8 +73,8 @@ def get_eps(exp, ess, config):
     atk_mec = eval(config["atk_mec"])
 
     # Read data
-    gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
-    bn = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
+    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    bn = gum.loadBN(f'{out_path / config["bns_path"]}/{exp}.bif')
     n_nodes = config["n_nodes"]
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])
@@ -207,21 +207,21 @@ def get_eps(exp, ess, config):
 def attack_cn_bn(exp, ess, config):
 
     # Get base path
-    base_path = get_base_path(config)
+    out_path = get_out_path(config)
 
     # Set seed
     set_global_seed(config["seed"])
 
     # Init hyperp.
-    results_path = base_path / config["results_path"]
+    results_path = out_path / config["results_path"]
     n_samples = config["n_samples"]
     error = eval(config["error"])
     def_mec = eval(config["def_mec"])
     atk_mec = eval(config["atk_mec"])
 
     # Read data
-    gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
-    bn = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
+    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    bn = gum.loadBN(f'{out_path / config["bns_path"]}/{exp}.bif')
     n_nodes = len(bn.nodes())
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])

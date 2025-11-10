@@ -35,12 +35,12 @@ def get_root_path():
 
 
 # Get base path
-def get_base_path(config):
+def get_out_path(config):
 
     root_path = get_root_path()
-    base_path = config["base_path"]
+    out_path = config["out_path"]
 
-    return root_path / base_path
+    return root_path / out_path
 
 
 # Create an empty directory
