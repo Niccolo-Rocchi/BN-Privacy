@@ -5,13 +5,13 @@ from itertools import product
 from joblib import Parallel, delayed
 
 from src.config import get_out_path, load_config
+from src.data import generate_naivebayes
 from src.inference import run_inferences
 from src.mia import get_eps
-from src.data import generate_naivebayes
 
 
 def main():
-    
+
     # Load config
     config = load_config("cn_vs_noisybn")
 
@@ -42,7 +42,7 @@ def main():
 
     # Clean
     gc.collect()
-    
+
 
 if __name__ == "__main__":
 

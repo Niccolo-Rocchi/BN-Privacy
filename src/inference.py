@@ -63,9 +63,7 @@ def run_inferences(exp, ess, eps, config):
     )
 
     res_path = (
-        out_path
-        / config["results_path"]
-        / f'results_nodes{config["n_nodes"]}_ess{ess}'
+        out_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}'
     )
     results.to_csv(f"{res_path}/{exp}.csv", index=False)
 

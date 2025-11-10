@@ -5,12 +5,12 @@ from itertools import product
 from joblib import Parallel, delayed
 
 from src.config import get_out_path, load_config
-from src.mia import attack_cn_bn
 from src.data import generate_randombn
+from src.mia import attack_cn_bn
 
 
 def main():
-    
+
     # Load config
     config = load_config("cn_privacy")
 
@@ -37,6 +37,7 @@ def main():
 
     # Clean
     gc.collect()
+
 
 if __name__ == "__main__":
 

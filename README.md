@@ -34,25 +34,19 @@ pip freeze > requirements.txt
 
 ### Running code
 
-1. Generate ground-truth models and data: 
-
-```bash
-python -m experiments.<name>.data
-```
-
-*Notice:* this will delete any existing ground-truth model, data, and result.
-
-2. Run the experiment: 
+1. Run the experiment: 
 
 ```bash
 python -m experiments.<name>.exp
 ```
 
-3. Results available at: 
+*Notice:* this will delete any existing ground-truth model, data, and result.
+
+2. Results available at: 
 
 `experiments/<name>/output/`.
 
-### Using Docker (recommended)  #FIXME: check
+### Using Docker (recommended)
 
 1. Build the Docker image:
 
@@ -63,10 +57,8 @@ docker build . -t bnp:2025
 2. Run the Docker container:
 
 ```bash
-docker run [-d] [--rm] -v bnp:/workspace bnp:2025 <command> 
+docker run [-d] [--rm] -v bnp:/workspace bnp:2025 python -m experiments.<name>.exp
 ```
-
-where `<command>` can be the data generation or the run of an experiment, or both (see above).
 
 3. Results available at: 
 
