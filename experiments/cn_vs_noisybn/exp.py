@@ -4,12 +4,14 @@ from itertools import product
 
 from joblib import Parallel, delayed
 
-from src.config import get_base_path
+from src.config import get_base_path, load_config
 from src.inference import run_inferences
-from src.mia import attack_cn_bn, get_eps
+from src.mia import get_eps
 
 
-def run_cn_vs_noisybn(config):
+def main():
+    # Load config
+    config = load_config("cn_vs_noisybn")
 
     # Get base path
     base_path = get_base_path(config)
@@ -37,25 +39,6 @@ def run_cn_vs_noisybn(config):
     gc.collect()
 
 
-def run_cn_privacy(config):
+if __name__ == "__main__":
 
-    # Get base path
-    base_path = get_base_path(config)
-
-    # Set number of threads for parallelization
-    num_cores = eval(config["num_cores"])
-
-    # For each ESS and each model ...
-    exp_vec = [
-        f.stem for f in (base_path / config["data_path"]).iterdir() if f.is_file()
-    ]
-    ess_vec = eval(config["ess_vec"])
-
-    # ... run MIA attack on BN and CN
-    Parallel(n_jobs=num_cores)(
-        delayed(attack_cn_bn)(exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
-    )
-
-    # Clean
-    gc.collect()
+    main()

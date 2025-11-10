@@ -1,15 +1,10 @@
-from src.config import get_config
-from src.data import generate_randombn
-from src.run_exp import run_cn_privacy
+from experiments.cn_privacy import data, exp
 
 
 def test_integration():
 
-    # Load config
-    config = get_config("test/cn_privacy/config.yaml")
-
     # Generate BNs and data
-    generate_randombn(config)
+    data.main()
 
     # Run experiment
-    run_cn_privacy(config)
+    exp.main()

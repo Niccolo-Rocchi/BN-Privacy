@@ -7,11 +7,10 @@ import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
 
+from src.attacks import * # noqa
 from src.config import get_base_path, set_global_seed
-from src.utils import (get_llr, noisy_bn,
-                       safe_assert)
-from src.attacks import *
-from src.defenses import *
+from src.defenses import * # noqa
+from src.utils import get_llr, noisy_bn, safe_assert
 
 
 # Get the attack power related to a fixed error
@@ -55,9 +54,6 @@ def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
     return power_vec, auc
 
 
-
-
-
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
 def get_eps(exp, ess, config):
 
@@ -95,9 +91,7 @@ def get_eps(exp, ess, config):
     # For any data sample ...
     for sample in range(n_samples):
 
-        # ... sample pool and rpop, ...
-        pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
-        gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+        # ... retrieve pool and rpop, ...
         pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes]
         rpop = gpop[~gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes].sample(rpop_ss)
 
@@ -244,9 +238,7 @@ def attack_cn_bn(exp, ess, config):
     # For any data sample ...
     for sample in range(n_samples):
 
-        # ... sample pool and rpop, ...
-        pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
-        gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+        # ... retrieve pool and rpop, ...
         pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes]
         rpop = gpop[~gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes].sample(rpop_ss)
 

@@ -1,6 +1,7 @@
 from itertools import product
 from pprint import pformat
 
+import numpy as np
 import pyagrum as gum
 from numpy.random import randint
 
@@ -24,8 +25,13 @@ def generate_naivebayes(config):
     create_clean_dir(data_path)
     create_clean_dir(results_path)
 
-    # Set BN (naive Bayes) structure
+    # Retrieve hyperparameters
     n_modmax = config["n_modmax"]
+    gpop_ss = config["gpop_ss"]
+    pool_ss = int(gpop_ss * config["pool_prop"])
+    n_samples = config["n_samples"]
+
+    # Set BN (naive Bayes) structure
     bn_str_gen = (
         f'{config["target_var"]}->X{i}[{randint(2, n_modmax+1)}]'
         for i in range(config["n_nodes"] - 1)
@@ -44,6 +50,15 @@ def generate_naivebayes(config):
         data_gen.drawSamples(config["gpop_ss"])
         data_gen.setDiscretizedLabelModeRandom()
         gpop = data_gen.to_pandas()
+
+        # For any data sample ...
+        for sample in range(n_samples):
+
+            # ... sample pool and rpop
+            pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
+            gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+
+        # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
 
     # For each ESS ...
@@ -78,9 +93,13 @@ def generate_randombn(config):
     create_clean_dir(data_path)
     create_clean_dir(results_path)
 
+    # Retrieve hyperparameters
     n_nodes_vec = eval(config["n_nodes_vec"])
     edge_ratio_vec = eval(config["edge_ratio_vec"])
     n_modmax = config["n_modmax"]
+    gpop_ss = config["gpop_ss"]
+    pool_ss = int(gpop_ss * config["pool_prop"])
+    n_samples = config["n_samples"]
 
     # For each configuration ...
     for i, (n, r) in enumerate(product(n_nodes_vec, edge_ratio_vec)):
@@ -100,4 +119,13 @@ def generate_randombn(config):
         data_gen.drawSamples(config["gpop_ss"])
         data_gen.setDiscretizedLabelModeRandom()
         gpop = data_gen.to_pandas()
+
+        # For any data sample ...
+        for sample in range(n_samples):
+
+            # ... sample pool and rpop
+            pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
+            gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+
+        # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)

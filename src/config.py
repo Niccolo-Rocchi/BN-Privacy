@@ -1,3 +1,4 @@
+import os
 import random
 import shutil
 from pathlib import Path
@@ -7,16 +8,22 @@ import yaml
 
 
 # Read configuration for experiment
-def get_config(path):
+def load_config(name: str):
 
-    with open(path, "r") as f:
+    root = get_root_path()
+
+    test_dir = "/tests" if os.getenv("USE_TEST_CONFIG") == "1" else ""
+
+    config_path = root / f"configs{test_dir}" / f"{name}.yaml"
+
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
     return config
 
 
 # Set global seed
-def set_global_seed(seed):
+def set_global_seed(seed: int):
 
     random.seed(seed)
     gum.initRandom(seed)

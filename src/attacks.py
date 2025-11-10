@@ -1,6 +1,8 @@
-from src.utils import get_ll, sample_from_cn
 import numpy as np
 import pyagrum as gum
+
+from src.utils import get_ll, sample_from_cn
+
 
 # Get the maximum likelihood BN inside a CN
 def atk_mle(cn, data, exp, config):
@@ -13,6 +15,7 @@ def atk_mle(cn, data, exp, config):
     bn = mle_bn(bns_sample, data)
 
     return bn
+
 
 # Get the maximum likelihood BN within a set
 def mle_bn(bns_sample, data):
