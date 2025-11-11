@@ -1,6 +1,7 @@
 import sys
 from math import prod
 from tempfile import TemporaryDirectory
+import os
 
 import hopsy
 import numpy as np
@@ -122,6 +123,19 @@ def safe_assert(condition):
     if IN_PYTEST:
         assert condition
 
+# Open `path` for writing, creating any parent directories as needed.
+def safe_open_dir(path):
+
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+
+    return path
+
+# Save a BN, with its name, into `path`
+def save_bn(bn, bn_name, path):
+
+    with safe_open_dir(path) as dir:
+        gum.saveBN(bn, f"{dir}/{bn_name}.bif")
 
 # Extract BN min and BN max from a CN
 def get_min_max_bns(cn, exp: str):
@@ -211,11 +225,10 @@ def sample_from_cpts(cpt_min, cpt_max, n_samples) -> list:
 
 
 # BNs sampler from a CN
-def sample_from_cn(cn, exp: str, n_samples: int) -> list:
+def sample_from_cn(bn_min, bn_max, exp: str, n_samples: int) -> list:
 
     # Get the DAG and extreme BNs
-    dag = gum.BayesNet(cn.current_bn())
-    bn_min, bn_max = get_min_max_bns(cn, exp)
+    dag = gum.BayesNet(bn_min)
 
     # For each variable ...
     cpts_dict = {}

@@ -34,7 +34,7 @@ def get_root_path():
     return Path(__file__).resolve().parents[1]
 
 
-# Get base path
+# Get output path
 def get_out_path(config):
 
     root_path = get_root_path()

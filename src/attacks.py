@@ -5,11 +5,11 @@ from src.utils import get_ll, sample_from_cn
 
 
 # Get the maximum likelihood BN inside a CN
-def atk_mle(cn, data, exp, config):
+def atk_mle(bn_min, bn_max, data, exp, config):
 
     # Sample from the CN ...
     n_bns = config["n_bns"]
-    bns_sample = sample_from_cn(cn, exp, n_bns)
+    bns_sample = sample_from_cn(bn_min, bn_max, exp, n_bns)
 
     # ... and take the MLE one
     bn = mle_bn(bns_sample, data)

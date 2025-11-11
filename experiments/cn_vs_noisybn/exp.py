@@ -18,7 +18,7 @@ def main():
     # Generate BNs and data
     generate_naivebayes(config)
 
-    # Get base path
+    # Get output path
     out_path = get_out_path(config)
 
     # Set number of threads for parallelization

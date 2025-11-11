@@ -6,7 +6,7 @@ import pyagrum as gum
 from numpy.random import randint
 
 from src.config import create_clean_dir, get_out_path, set_global_seed
-from src.utils import compact_dict
+from src.utils import compact_dict, safe_assert, save_bn
 
 
 def generate_naivebayes(config):
@@ -43,7 +43,7 @@ def generate_naivebayes(config):
 
         # ... generate BN, ...
         bn = gum.fastBN(bn_str)
-        gum.saveBN(bn, f"{bns_path}/exp{i}.bif")
+        save_bn(bn, f"exp{i}", bns_path)
 
         # ... and generate gpop from BN
         data_gen = gum.BNDatabaseGenerator(bn)
@@ -99,6 +99,7 @@ def generate_randombn(config):
     n_modmax = config["n_modmax"]
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
+    rpop_ss = int(gpop_ss * config["rpop_prop"])
     n_samples = config["n_samples"]
 
     # For each configuration ...
@@ -107,14 +108,14 @@ def generate_randombn(config):
         # ... generate BN, ...
         bn_gen = gum.BNGenerator()
         bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=n_modmax)
-        gum.saveBN(bn, f"{bns_path}/exp{i}.bif")
+        save_bn(bn, f"exp{i}", bns_path)
 
-        with open(f'{results_path}/{config["meta_file"]}', "a") as m:
+        with open(f'{out_path}/{config["meta_file"]}', "a") as m:
             m.write(
                 f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()} Max categories: {n_modmax}\n"
             )
 
-        # ... and generate gpop from BN
+        # ... and generate gpop from BN         #TODO: check if number of levels is coherent, otherwise: rejection sampling of data
         data_gen = gum.BNDatabaseGenerator(bn)
         data_gen.drawSamples(config["gpop_ss"])
         data_gen.setDiscretizedLabelModeRandom()
@@ -124,8 +125,20 @@ def generate_randombn(config):
         for sample in range(n_samples):
 
             # ... sample pool and rpop
-            pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
+            shuffled_idx = np.random.permutation(gpop.index)
+
+            pool_idx = shuffled_idx[:pool_ss]
+            rpop_idx = shuffled_idx[pool_ss:pool_ss + rpop_ss]
+
             gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+            gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)
+
+            # Debug
+            safe_assert(pool_ss == len(pool_idx))
+            safe_assert(rpop_ss == len(rpop_idx))
+            safe_assert(sum(gpop[f"in-pool-{sample}"]) == pool_ss)
+            safe_assert(sum(gpop[f"in-rpop-{sample}"]) == rpop_ss)
+
 
         # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
