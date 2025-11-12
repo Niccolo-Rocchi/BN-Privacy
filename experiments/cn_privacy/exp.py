@@ -20,6 +20,7 @@ def main():
     set_global_seed(config["seed"])
     def_mec = config["def_mec"]
     atk_mec = config["atk_mec"]
+    num_cores = eval(config["num_cores"])
 
     # Generate BNs and data
     print("#" * 5, "Generate BNs and data", "#" * 5)
@@ -35,14 +36,14 @@ def main():
     # Estimate BNs from rpop and pool
     print("#" * 5, "Estimate BNs from rpop and pool", "#" * 5)
 
-    _ = Parallel(n_jobs=eval(config["num_cores"]))(
+    _ = Parallel(n_jobs=num_cores)(
         delayed(phase_estimation)(exp, config) for exp in exp_vec
     )
 
     # Defense mechanism
     print("#" * 5, "Defense mechanism", "#" * 5)
 
-    _ = Parallel(n_jobs=eval(config["num_cores"]))(
+    _ = Parallel(n_jobs=num_cores)(
         delayed(phase_defense_mechanism)(def_mec, exp, ess, config)
         for exp, ess in product(exp_vec, ess_vec)
     )
@@ -50,7 +51,7 @@ def main():
     # Attack mechanism
     print("#" * 5, "Attack mechanism", "#" * 5)
 
-    _ = Parallel(n_jobs=eval(config["num_cores"]))(
+    _ = Parallel(n_jobs=num_cores)(
         delayed(phase_attack_mechanism)(atk_mec, exp, ess, config)
         for exp, ess in product(exp_vec, ess_vec)
     )
@@ -58,7 +59,7 @@ def main():
     # MIA vs CN
     print("#" * 5, "MIA vs CN", "#" * 5)
 
-    _ = Parallel(n_jobs=eval(config["num_cores"]))(
+    _ = Parallel(n_jobs=num_cores)(
         delayed(phase_mia_vs_cn)(exp, ess, config)
         for exp, ess in product(exp_vec, ess_vec)
     )
@@ -66,14 +67,14 @@ def main():
     # MIA vs BN (for comparison)
     print("#" * 5, "MIA vs BN", "#" * 5)
 
-    _ = Parallel(n_jobs=eval(config["num_cores"]))(
+    _ = Parallel(n_jobs=num_cores)(
         delayed(phase_mia_vs_bn)(exp, config) for exp in exp_vec
     )
 
     # Compute theoretical power
     print("#" * 5, "Compute theoretical power", "#" * 5)
 
-    _ = Parallel(n_jobs=eval(config["num_cores"]))(
+    _ = Parallel(n_jobs=num_cores)(
         delayed(phase_theoretical_power)(exp, config) for exp in exp_vec
     )
 

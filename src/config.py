@@ -10,11 +10,9 @@ import yaml
 # Read configuration for experiment
 def load_config(name: str):
 
-    root = get_root_path()
-
-    test_dir = "/tests" if os.getenv("USE_TEST_CONFIG") == "1" else ""
-
-    config_path = root / f"configs{test_dir}" / f"{name}.yaml"
+    subdir = "test" if os.getenv("USE_TEST_CONFIG") == "1" else "experiments"
+    
+    config_path = get_root_path() / subdir / name / "config.yaml"
 
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
