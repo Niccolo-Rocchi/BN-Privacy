@@ -1,5 +1,5 @@
 venv
-output
+output*
 bin
 __pycache__
 .pytest_cache

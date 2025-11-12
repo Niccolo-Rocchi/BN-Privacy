@@ -218,7 +218,7 @@ def sample_from_cpts(cpt_min, cpt_max, n_samples) -> list:
 
     # Debug
     safe_assert(cpt_min.shape == cpt_max.shape)
-    safe_assert(len(credal_dict) == prod(cpt_min.shape))
+    safe_assert(len(credal_dict) == cpt_min.shape[0])
     safe_assert(len(cpt_samples) == n_samples)
 
     return cpt_samples

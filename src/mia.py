@@ -10,7 +10,7 @@ from sklearn import metrics
 import src.attacks
 from src.config import get_out_path, set_global_seed
 import src.defenses
-from src.utils import check_consistency, get_llr, get_min_max_bns, noisy_bn, safe_assert, save_bn
+from src.utils import check_consistency, get_llr, get_min_max_bns, noisy_bn, safe_assert, safe_open_dir, save_bn
 
 
 # Get the attack power related to a fixed error
@@ -202,14 +202,16 @@ def get_eps(exp, ess, config):
 
     return exp, ess, eps_best
 
-# Learn BN parameters from a given DAG and data
-def learn_bn_params(dag, data):
+# Learn BN parameters from a given BN and data
+def learn_bn_params(bn, data):
 
-    learner = gum.BNLearner(data)
+    bn_copy = gum.BayesNet(bn)
+
+    learner = gum.BNLearner(data, bn_copy)
     learner.useSmoothingPrior(1e-5)
-    bn = learner.learnParameters(dag)
+    bn_learnt = learner.learnParameters(bn_copy)
 
-    return bn
+    return bn_learnt
 
 # Estimate BNs from rpop and pool
 def phase_estimation(exp, config) -> None:
@@ -227,8 +229,8 @@ def phase_estimation(exp, config) -> None:
 
     # Debug
     safe_assert(gpop_ss == gpop.shape[0])
-    safe_assert(n_nodes == gpop.shape[1])
-
+    safe_assert(n_nodes == gpop.loc[:, ~gpop.columns.str.contains("in-")].shape[1])
+    
     # For each data sample ...
     for sample in range(config["n_samples"]):
 
@@ -237,11 +239,11 @@ def phase_estimation(exp, config) -> None:
         rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, :n_nodes]
 
         # ... estimate BN from rpop, ...
-        bn_learnt = learn_bn_params(bn.dag(), rpop)
+        bn_learnt = learn_bn_params(bn, rpop)
         save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config["rpop_path"])
 
         # ... estimate BN from pool, ...
-        bn_learnt = learn_bn_params(bn.dag(), pool)
+        bn_learnt = learn_bn_params(bn, pool)
         save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config["pool_path"])
 
         # Debug
@@ -277,6 +279,7 @@ def phase_defense_mechanism(def_mec, exp, ess, config) -> None:
         # save_bn(bn_min, f"bn_min_{exp}_sample{sample}", out_path / config["cns_path"] / f"ESS: {ess}")
         # save_bn(bn_max, f"bn_max_{exp}_sample{sample}", out_path / config["cns_path"] / f"ESS: {ess}")
         base_path = out_path / config["cns_path"] / f"ESS: {ess}"
+        safe_open_dir(base_path)
         cn.saveBNsMinMax(f"{base_path}/bn_min_{exp}_sample{sample}.bif", f"{base_path}/bn_max_{exp}_sample{sample}.bif")
 
     
