@@ -9,10 +9,15 @@ from src.config import get_out_path, set_global_seed
 from src.utils import add_counts_to_bn, get_min_max_bns, noisy_bn, safe_assert
 
 
-def run_inferences(exp, ess, eps, config):
+def run_inferences(exp, ess, config):
 
     out_path = get_out_path(config)
     target = config["target_var"]
+
+    auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
+    eps = auc_meta.loc[
+        (auc_meta["exp"] == exp) & (auc_meta["ess"] == ess), "eps"
+    ].values[0]
 
     # Set seed
     set_global_seed(config["seed"])
@@ -62,10 +67,9 @@ def run_inferences(exp, ess, eps, config):
         }
     )
 
-    res_path = (
-        out_path / config["results_path"] / f'results_nodes{config["n_nodes"]}_ess{ess}'
+    results.to_csv(
+        f'{out_path / config["results_path"]}/{exp}_ess{ess}.csv', index=False
     )
-    results.to_csv(f"{res_path}/{exp}.csv", index=False)
 
 
 # MPE function for BN

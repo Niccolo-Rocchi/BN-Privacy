@@ -1,12 +1,11 @@
 from itertools import product
-from pprint import pformat
 
 import numpy as np
 import pyagrum as gum
 from numpy.random import randint
 
 from src.config import create_clean_dir, get_out_path, set_global_seed
-from src.utils import compact_dict, safe_assert, save_bn
+from src.utils import safe_assert, save_bn
 
 
 def generate_naivebayes(config):
@@ -29,6 +28,7 @@ def generate_naivebayes(config):
     n_modmax = config["n_modmax"]
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
+    rpop_ss = int(gpop_ss * config["rpop_prop"])
     n_samples = config["n_samples"]
 
     # Set BN (naive Bayes) structure
@@ -45,6 +45,11 @@ def generate_naivebayes(config):
         bn = gum.fastBN(bn_str)
         save_bn(bn, f"exp{i}", bns_path)
 
+        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
+            m.write(
+                f'- exp{i}. Naive Bayes: {config["n_nodes"]} nodes. Complexity: {bn.dim()} Max categories: {n_modmax}\n'
+            )
+
         # ... and generate gpop from BN
         data_gen = gum.BNDatabaseGenerator(bn)
         data_gen.drawSamples(config["gpop_ss"])
@@ -55,26 +60,22 @@ def generate_naivebayes(config):
         for sample in range(n_samples):
 
             # ... sample pool and rpop
-            pool_idx = np.random.choice(range(gpop_ss), size=pool_ss, replace=False)
+            shuffled_idx = np.random.permutation(gpop.index)
+
+            pool_idx = shuffled_idx[:pool_ss]
+            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
+
             gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+            gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)
+
+            # Debug
+            safe_assert(pool_ss == len(pool_idx))
+            safe_assert(rpop_ss == len(rpop_idx))
+            safe_assert(sum(gpop[f"in-pool-{sample}"]) == pool_ss)
+            safe_assert(sum(gpop[f"in-rpop-{sample}"]) == rpop_ss)
 
         # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
-
-    # For each ESS ...
-    for ess in config["ess_dict"].keys():
-
-        # ... create results subdirectories and metadata files
-        meta_file_path = (
-            out_path
-            / config["results_path"]
-            / f'results_nodes{config["n_nodes"]}_ess{ess}'
-            / config["meta_file"]
-        )
-        meta_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(meta_file_path, "w") as f:
-            f.write(pformat(compact_dict(config)) + "\n\n" + "#" * 50 + "\n\n")
 
 
 def generate_randombn(config):
@@ -110,12 +111,12 @@ def generate_randombn(config):
         bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=n_modmax)
         save_bn(bn, f"exp{i}", bns_path)
 
-        with open(f'{out_path}/{config["meta_file"]}', "a") as m:
+        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
             m.write(
                 f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()} Max categories: {n_modmax}\n"
             )
 
-        # ... and generate gpop from BN         #TODO: check if number of levels is coherent, otherwise: rejection sampling of data
+        # ... and generate gpop from BN
         data_gen = gum.BNDatabaseGenerator(bn)
         data_gen.drawSamples(config["gpop_ss"])
         data_gen.setDiscretizedLabelModeRandom()
@@ -128,7 +129,7 @@ def generate_randombn(config):
             shuffled_idx = np.random.permutation(gpop.index)
 
             pool_idx = shuffled_idx[:pool_ss]
-            rpop_idx = shuffled_idx[pool_ss:pool_ss + rpop_ss]
+            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
 
             gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
             gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)
@@ -138,7 +139,6 @@ def generate_randombn(config):
             safe_assert(rpop_ss == len(rpop_idx))
             safe_assert(sum(gpop[f"in-pool-{sample}"]) == pool_ss)
             safe_assert(sum(gpop[f"in-rpop-{sample}"]) == rpop_ss)
-
 
         # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
