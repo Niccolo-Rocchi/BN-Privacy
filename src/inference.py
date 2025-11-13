@@ -6,13 +6,17 @@ import pyagrum as gum
 from more_itertools import random_product
 
 from src.config import get_out_path, set_global_seed
-from src.utils import add_counts_to_bn, get_min_max_bns, noisy_bn, safe_assert
+from src.mia import learn_bn_params
+from src.utils import get_min_max_bns, noisy_bn, safe_assert
+import src.defenses
+
 
 
 def run_inferences(exp, ess, config):
 
     out_path = get_out_path(config)
     target = config["target_var"]
+    def_mec = config["def_mec"]
 
     auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
     eps = auc_meta.loc[
@@ -29,21 +33,17 @@ def run_inferences(exp, ess, config):
     ]
 
     # Store ground-truth BN
-    gt = gum.loadBN(f'{out_path / config["bns_path"]}/{exp}.bif')
+    gt = gum.loadBN(f'{out_path / config["bns_path"]}/gt/{exp}.bif')
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
 
-    # Learn BN from gpop
-    bn_learner = gum.BNLearner(gpop)
-    bn_learner.useSmoothingPrior(1e-5)
-    bn = bn_learner.learnParameters(gt.dag())
+    # Learn BN from gpop                            #TODO: save results
+    bn = learn_bn_params(gt,gpop)
 
-    # Learn CN from gpop
-    bn_copy = gum.BayesNet(bn)
-    add_counts_to_bn(bn_copy, gpop)
-    cn = gum.CredalNet(bn_copy)
-    cn.idmLearning(ess)
+    # Learn CN from gpop (defense mechanism)        #TODO: save results
+    def_mec_fn = getattr(src.defenses, def_mec)
+    cn = def_mec_fn(bn, ess, gpop)
 
-    # Learn noisy BN from gpop
+    # Learn noisy BN from gpop                      #TODO: save results
     scale = (2 * bn.size()) / (len(gpop) * eps)
     bn_noisy = noisy_bn(bn, scale)
 
@@ -68,7 +68,7 @@ def run_inferences(exp, ess, config):
     )
 
     results.to_csv(
-        f'{out_path / config["results_path"]}/{exp}_ess{ess}.csv', index=False
+        f'{out_path / config["results_path"]}/inferences/{exp}_ess{ess}.csv', index=False
     )
 
 

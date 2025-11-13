@@ -126,7 +126,7 @@ def safe_assert(condition):
 def safe_open_dir(path):
 
     if not path.exists():
-        path.mkdir(parents=True, exist_ok=True)
+        path.mkdir(parents=False, exist_ok=True)
 
     return path
 
@@ -134,8 +134,7 @@ def safe_open_dir(path):
 # Save a BN, with its name, into `path`
 def save_bn(bn, bn_name, path):
 
-    with safe_open_dir(path) as dir:
-        gum.saveBN(bn, f"{dir}/{bn_name}.bif")
+    gum.saveBN(bn, f"{path}/{bn_name}.bif")
 
 
 # Extract BN min and BN max from a CN

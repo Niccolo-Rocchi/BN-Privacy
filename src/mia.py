@@ -56,8 +56,6 @@ def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
 def phase_find_eps(exp, ess, config) -> dict:
 
-    # TODO: save noisy bn for a given exp.
-
     # Get output path
     out_path = get_out_path(config)
 
@@ -86,10 +84,10 @@ def phase_find_eps(exp, ess, config) -> dict:
 
             # ... read the BNs as estimated from rpop and pool, ...
             bn_theta = gum.loadBN(
-                f"{out_path}/{config['rpop_path']}/bn_{exp}_sample{sample}.bif"
+                f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
             )
             bn_theta_hat = gum.loadBN(
-                f"{out_path}/{config['pool_path']}/bn_{exp}_sample{sample}.bif"
+                f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
             )
 
             # Get noisy BN
@@ -134,7 +132,7 @@ def phase_find_eps(exp, ess, config) -> dict:
     # Save noisy BNs
     for sample in range(config["n_samples"]):
         bn_theta_hat = gum.loadBN(
-            f"{out_path}/{config['pool_path']}/bn_{exp}_sample{sample}.bif"
+            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
         scale = (2 * bn_theta_hat.size()) / (pool_ss * eps_best)
         bn_noisy = noisy_bn(bn_theta_hat, scale)
@@ -169,7 +167,7 @@ def phase_estimation(exp, config) -> None:
 
     # Read data
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
-    bn = gum.loadBN(f'{out_path / config["bns_path"]}/{exp}.bif')
+    bn = gum.loadBN(f'{out_path / config["bns_path"]}/gt/{exp}.bif')
     n_nodes = len(bn.nodes())
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])
@@ -188,11 +186,11 @@ def phase_estimation(exp, config) -> None:
 
         # ... estimate BN from rpop, ...
         bn_learnt = learn_bn_params(bn, rpop)
-        save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config["rpop_path"])
+        save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config['bns_path'] / "rpop")
 
         # ... estimate BN from pool, ...
         bn_learnt = learn_bn_params(bn, pool)
-        save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config["pool_path"])
+        save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config['bns_path'] / "pool")
 
         # Debug
         safe_assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
@@ -215,7 +213,7 @@ def phase_defense_mechanism(def_mec, exp, ess, config) -> None:
     for sample in range(config["n_samples"]):
 
         # ... read the related BN
-        bn = gum.loadBN(f"{out_path}/{config['pool_path']}/bn_{exp}_sample{sample}.bif")
+        bn = gum.loadBN(f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif")
 
         # ... retrieve pool, ...
         pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, : len(bn.nodes())]
@@ -223,9 +221,6 @@ def phase_defense_mechanism(def_mec, exp, ess, config) -> None:
         # ... and derive the CN
         def_mec_fn = getattr(src.defenses, def_mec)
         cn = def_mec_fn(bn, ess, pool)
-        # bn_min, bn_max = get_min_max_bns(cn, exp)
-        # save_bn(bn_min, f"bn_min_{exp}_sample{sample}", out_path / config["cns_path"] / f"ESS: {ess}")
-        # save_bn(bn_max, f"bn_max_{exp}_sample{sample}", out_path / config["cns_path"] / f"ESS: {ess}")
         base_path = out_path / config["cns_path"] / f"ESS: {ess}"
         safe_open_dir(base_path)
         cn.saveBNsMinMax(
@@ -262,10 +257,12 @@ def phase_attack_mechanism(atk_mec, exp, ess, config) -> None:
         # ... and derive the BN
         atk_mec_fn = getattr(src.attacks, atk_mec)
         bn = atk_mec_fn(bn_min, bn_max, rpop, exp, config)
+        base_path = out_path / config["atk_path"] / f"ESS: {ess}"
+        safe_open_dir(base_path)
         save_bn(
             bn,
             f"bn_{exp}_sample{sample}",
-            out_path / config["atk_path"] / f"ESS: {ess}",
+            base_path
         )
 
     return
@@ -288,10 +285,10 @@ def phase_mia_vs_bn(exp, config) -> None:
 
         # ... read the BNs as estimated from rpop and pool, ...
         bn_theta = gum.loadBN(
-            f"{out_path}/{config['rpop_path']}/bn_{exp}_sample{sample}.bif"
+            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
         )
         bn_theta_hat = gum.loadBN(
-            f"{out_path}/{config['pool_path']}/bn_{exp}_sample{sample}.bif"
+            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
 
         bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
@@ -321,7 +318,7 @@ def phase_mia_vs_bn(exp, config) -> None:
         #         log.write(traceback.format_exc())
 
     # Save results
-    results.to_csv(f'{out_path}/{config["results_path"]}/bn_{exp}.csv', index=False)
+    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
 
 
 # MIA attack vs a CN
@@ -347,7 +344,7 @@ def phase_mia_vs_cn(exp, ess, config, save_res=True) -> dict:
 
         # ... read the BN as estimated from rpop, ...
         bn_theta = gum.loadBN(
-            f"{out_path}/{config['rpop_path']}/bn_{exp}_sample{sample}.bif"
+            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
         )
 
         bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
@@ -383,17 +380,21 @@ def phase_mia_vs_cn(exp, ess, config, save_res=True) -> dict:
     # Save results
     if save_res:
         results.to_csv(
-            f'{out_path}/{config["results_path"]}/cn_{exp}-ess{ess}.csv', index=False
+            f'{out_path}/{config["results_path"]}/cns/cn_{exp}-ess{ess}.csv', index=False
         )
 
     return {"exp": exp, "ess": ess, "auc_cn": auc_cn}
 
 
 # Get theoretical power
-def phase_theoretical_power(exp, config):
+def phase_theoretical_power(exp, config) -> None:
 
-    # Read BN
-    bn = gum.loadBN(f'{get_out_path(config) / config["bns_path"]}/{exp}.bif')
+    # Get output path
+    out_path = get_out_path(config)
+
+    # Read data
+    bn = gum.loadBN(f'{get_out_path(config) / config["bns_path"]}/gt/{exp}.bif')
+    results = pd.read_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv')
 
     # Compute bound
     bound = math.sqrt(bn.dim() / int(config["gpop_ss"] * config["pool_prop"]))
@@ -403,4 +404,8 @@ def phase_theoretical_power(exp, config):
     z_one_minus_beta = [bound - i for i in z_alpha]
     beta = [norm.cdf(i).item() for i in z_one_minus_beta]
 
-    return beta
+    # Save results
+    results["power_bound"] = beta
+    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
+
+    return

@@ -17,12 +17,6 @@ def generate_naivebayes(config):
     out_path = get_out_path(config)
     bns_path = out_path / config["bns_path"]
     data_path = out_path / config["data_path"]
-    results_path = out_path / config["results_path"]
-
-    # Create empty directories
-    create_clean_dir(bns_path)
-    create_clean_dir(data_path)
-    create_clean_dir(results_path)
 
     # Retrieve hyperparameters
     n_modmax = config["n_modmax"]
@@ -43,7 +37,7 @@ def generate_naivebayes(config):
 
         # ... generate BN, ...
         bn = gum.fastBN(bn_str)
-        save_bn(bn, f"exp{i}", bns_path)
+        save_bn(bn, f"exp{i}", bns_path / "gt")
 
         with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
             m.write(
@@ -87,12 +81,6 @@ def generate_randombn(config):
     out_path = get_out_path(config)
     bns_path = out_path / config["bns_path"]
     data_path = out_path / config["data_path"]
-    results_path = out_path / config["results_path"]
-
-    # Create empty directories
-    create_clean_dir(bns_path)
-    create_clean_dir(data_path)
-    create_clean_dir(results_path)
 
     # Retrieve hyperparameters
     n_nodes_vec = eval(config["n_nodes_vec"])
@@ -109,7 +97,7 @@ def generate_randombn(config):
         # ... generate BN, ...
         bn_gen = gum.BNGenerator()
         bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=n_modmax)
-        save_bn(bn, f"exp{i}", bns_path)
+        save_bn(bn, f"exp{i}", bns_path / "gt")
 
         with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
             m.write(
