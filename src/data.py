@@ -38,7 +38,7 @@ def generate_naivebayes(config):
         bn = gum.fastBN(bn_str)
         save_bn(bn, f"exp{i}", bns_path / "gt")
 
-        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
+        with open(f'{out_path}/{config["exp_meta"]}', "w") as m:
             m.write(
                 f'- exp{i}. Naive Bayes: {config["n_nodes"]} nodes. Complexity: {bn.dim()} Max categories: {n_modmax}\n'
             )
@@ -96,7 +96,7 @@ def generate_randombn(config):
         bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=config["n_modmax"])
         save_bn(bn, f"exp{i}", bns_path / "gt")
 
-        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
+        with open(f'{out_path}/{config["exp_meta"]}', "w") as m:
             m.write(
                 f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
             )
