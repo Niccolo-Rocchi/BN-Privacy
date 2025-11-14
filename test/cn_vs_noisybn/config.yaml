@@ -29,10 +29,11 @@ atk_mec: 'atk_mle'                                  # Attack mechanisms to consi
 tol: 0.03                                           # To find eps s.t. |AUC(eps) - AUC(CN)| < tol
 error: 'np.logspace(-4, 0, 10, endpoint=False)'     # Type-I errors vector
 
+# Noisy BN
+eps_vec: 'np.arange(0.1, 10, 0.1)'                  # Epsilon to consider for noisy BN
+
 # DEF-IDM
-ess_dict:                                           # Eps list to evaluate for each ess
-  1:  'np.arange(0.1, 10, 0.5)'
-  50: 'np.arange(5e-7, 5e-4, 1e-6)'
+ess: 1                                              # ESS: the amount of injected uncertainty
 
 # ATK-MLE
 n_bns: 5                                            # Number of BNs to sample within the CN
@@ -43,3 +44,12 @@ n_infer: 5                                          # Number of inferences to pe
 # Other
 seed: 42                                            # Global seed
 num_cores: 'multiprocessing.cpu_count() - 1'        # Number of threads to use for parallelization
+
+## Notes
+# 1) Suggested pairs (ess: eps_vec) for n_nodes=10: 
+#   - 1 : 'np.arange(0.1, 10, 0.1)'
+#   - 10: 'np.arange(0.1, 10, 0.1)'
+#   - 20: 'np.arange(0.05, 5, 0.05)'
+#   - 30: 'np.arange(1e-3, 1, 1e-3)'
+#   - 40: 'np.arange(5e-6, 1e-2, 5e-6)' 
+#   - 50: 'np.arange(5e-7, 5e-4, 5e-7)'

@@ -38,7 +38,6 @@ def main():
     exp_vec = [
         f.stem for f in (out_path / config["data_path"]).iterdir() if f.is_file()
     ]
-    ess_vec = config["ess_dict"].keys()
 
     # Estimate BNs from rpop and pool
     print("#" * 5, "Estimate BNs from rpop and pool", "#" * 5)
@@ -52,23 +51,23 @@ def main():
     print("#" * 5, "Defense mechanism", "#" * 5)
     create_clean_dir(out_path / config["cns_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_defense_mechanism)(def_mec, exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(phase_defense_mechanism)(def_mec, exp, config)
+        for exp in exp_vec
     )
 
     # Attack mechanism
     print("#" * 5, "Attack mechanism", "#" * 5)
     create_clean_dir(out_path / config["atk_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_attack_mechanism)(atk_mec, exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(phase_attack_mechanism)(atk_mec, exp, config)
+        for exp in exp_vec
     )
 
     # MIA vs CN
     print("#" * 5, "MIA vs CN", "#" * 5)
     res = Parallel(n_jobs=num_cores)(
-        delayed(phase_mia_vs_cn)(exp, ess, config, save_res=False)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(phase_mia_vs_cn)(exp, config, save_res=False)
+        for exp in exp_vec
     )
     res = pd.DataFrame(res)
     res.to_csv(f'{out_path}/{config["auc_meta"]}', index=False)
@@ -77,8 +76,8 @@ def main():
     print("#" * 5, "Get epsilon", "#" * 5)
     create_clean_dir(out_path / config["noisy_path"])
     res = Parallel(n_jobs=num_cores)(
-        delayed(phase_find_eps)(exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(phase_find_eps)(exp, config)
+        for exp in exp_vec
     )
     res = pd.DataFrame(res)
     res.to_csv(f'{out_path}/{config["auc_meta"]}', index=False)
@@ -87,8 +86,8 @@ def main():
     print("#" * 5, "Run inferences", "#" * 5)
     create_clean_dir(out_path / config["results_path"] / "inferences")
     _ = Parallel(n_jobs=num_cores)(
-        delayed(run_inferences)(exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(run_inferences)(exp, config)
+        for exp in exp_vec
     )
 
     # Clean

@@ -26,7 +26,9 @@ pip freeze > requirements.txt
 
 ## Experiments
 
-`<name>` is the name of the experiment to run. It can be one of the following.
+`<name>` is the name of the experiment to run. Each `<name>` has its own directory, which is named the same way. Each of these contains the experiment logic, configuration file (`config.yaml`), output (specified in configurations), and a `Plot_results.ipynb` notebook to plot results.
+
+`<name>` can be one of the following:
 
 1. `cn_privacy`: run membership inference attack against a Bayesian network (BN), its related credal network (CN), and compute the theoretical privacy estimate of BN. The pipeline and results are described in the paper.
 
@@ -34,17 +36,13 @@ pip freeze > requirements.txt
 
 ### Running code
 
-1. Run the experiment: 
+Run an experiment with: 
 
 ```bash
 python -m experiments.<name>.exp
 ```
 
-*Notice:* this will delete any existing ground-truth model, data, and result.
-
-2. Results available at: 
-
-`experiments/<name>/output/`.
+*Notice:* this will delete any already existing output. For storing intermediate output, comment out code in the `experiments.<name>.exp.py` file.
 
 ### Using Docker (recommended)
 
@@ -62,7 +60,7 @@ docker run [-d] [--rm] -v bnp:/workspace bnp:2025 python -m experiments.<name>.e
 
 3. Results available at: 
 
-`/var/lib/docker/volumes/bnp/_data/experiments/<name>/output/`.
+`/var/lib/docker/volumes/bnp/_data/`.
 
 ## Testing code
 
@@ -71,10 +69,6 @@ Run integration tests with:
 ```bash
 pytest [--cov=src] [--cov-report=term-missing] [--capture=no]
 ```
-
-Results are available at: 
-
-`test/<name>/output/`.
 
 ## Formatting and linting
 
@@ -97,7 +91,3 @@ Analyze code by running:
 ```bash
 pylint $(git ls-files '*.py')
 ```
-
-## Plotting results
-
-Use the `Plot_results.ipynb` notebook available for each experiment. Plots will be saved at: `experiments/<name>/output/plots`.

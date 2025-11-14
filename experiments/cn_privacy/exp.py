@@ -37,7 +37,6 @@ def main():
     exp_vec = [
         f.stem for f in (out_path / config["data_path"]).iterdir() if f.is_file()
     ]
-    ess_vec = eval(config["ess_vec"])
 
     # Estimate BNs from rpop and pool
     print("#" * 5, "Estimate BNs from rpop and pool", "#" * 5)
@@ -51,24 +50,24 @@ def main():
     print("#" * 5, "Defense mechanism", "#" * 5)
     create_clean_dir(out_path / config["cns_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_defense_mechanism)(def_mec, exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(phase_defense_mechanism)(def_mec, exp, config)
+        for exp in exp_vec
     )
 
     # Attack mechanism
     print("#" * 5, "Attack mechanism", "#" * 5)
     create_clean_dir(out_path / config["atk_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_attack_mechanism)(atk_mec, exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(phase_attack_mechanism)(atk_mec, exp, config)
+        for exp in exp_vec
     )
 
     # MIA vs CN
     print("#" * 5, "MIA vs CN", "#" * 5)
     create_clean_dir(out_path / config["results_path"] / "cns")
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_mia_vs_cn)(exp, ess, config)
-        for exp, ess in product(exp_vec, ess_vec)
+        delayed(phase_mia_vs_cn)(exp, config)
+        for exp in exp_vec
     )
 
     # MIA vs BN

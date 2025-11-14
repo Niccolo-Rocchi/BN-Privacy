@@ -84,7 +84,6 @@ def generate_randombn(config):
     # Retrieve hyperparameters
     n_nodes_vec = eval(config["n_nodes_vec"])
     edge_ratio_vec = eval(config["edge_ratio_vec"])
-    n_modmax = config["n_modmax"]
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
     rpop_ss = int(gpop_ss * config["rpop_prop"])
@@ -94,12 +93,12 @@ def generate_randombn(config):
 
         # ... generate BN, ...
         bn_gen = gum.BNGenerator()
-        bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=n_modmax)
+        bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=config["n_modmax"])
         save_bn(bn, f"exp{i}", bns_path / "gt")
 
         with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
             m.write(
-                f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()} Max categories: {n_modmax}\n"
+                f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
             )
 
         # ... and generate gpop from BN

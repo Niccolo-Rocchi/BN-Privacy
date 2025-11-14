@@ -11,7 +11,7 @@ from src.utils import get_min_max_bns, noisy_bn, safe_assert
 import src.defenses
 
 
-def run_inferences(exp, ess, config):
+def run_inferences(exp, config):
 
     out_path = get_out_path(config)
     target = config["target_var"]
@@ -19,7 +19,7 @@ def run_inferences(exp, ess, config):
 
     auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
     eps = auc_meta.loc[
-        (auc_meta["exp"] == exp) & (auc_meta["ess"] == ess), "eps"
+        auc_meta["exp"] == exp, "eps"
     ].values[0]
 
     # Set seed
@@ -40,7 +40,7 @@ def run_inferences(exp, ess, config):
 
     # Learn CN from gpop (defense mechanism)        #TODO: save results
     def_mec_fn = getattr(src.defenses, def_mec)
-    cn = def_mec_fn(bn, ess, gpop)
+    cn = def_mec_fn(bn, config["ess"], gpop)
 
     # Learn noisy BN from gpop                      #TODO: save results
     scale = (2 * bn.size()) / (len(gpop) * eps)
@@ -67,7 +67,7 @@ def run_inferences(exp, ess, config):
     )
 
     results.to_csv(
-        f'{out_path / config["results_path"]}/inferences/{exp}_ess{ess}.csv',
+        f'{out_path / config["results_path"]}/inferences/{exp}.csv',
         index=False,
     )
 

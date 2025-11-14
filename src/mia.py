@@ -55,7 +55,7 @@ def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 
 
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
-def phase_find_eps(exp, ess, config) -> dict:
+def phase_find_eps(exp, config) -> dict:
 
     # Get output path
     out_path = get_out_path(config)
@@ -66,9 +66,9 @@ def phase_find_eps(exp, ess, config) -> dict:
     pool_ss = int(gpop_ss * config["pool_prop"])
     auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
     auc_cn = auc_meta.loc[
-        (auc_meta["exp"] == exp) & (auc_meta["ess"] == ess), "auc_cn"
+        auc_meta["exp"] == exp, "auc_cn"
     ].values[0]
-    eps_vec = eval(config["ess_dict"][ess])
+    eps_vec = eval(config["eps_vec"])
 
     eps_best = eps_vec[-1]
 
@@ -141,7 +141,6 @@ def phase_find_eps(exp, ess, config) -> dict:
 
     return {
         "exp": exp,
-        "ess": ess,
         "auc_cn": auc_cn,
         "auc_noisy_bn": auc_noisy_bn,
         "eps": eps_best,
@@ -210,7 +209,7 @@ def phase_estimation(exp, config) -> None:
 
 
 # Apply defense mechanism to a BN, namely, derive a CN from a BN
-def phase_defense_mechanism(def_mec, exp, ess, config) -> None:
+def phase_defense_mechanism(def_mec, exp, config) -> None:
 
     # Get output path
     out_path = get_out_path(config)
@@ -234,12 +233,11 @@ def phase_defense_mechanism(def_mec, exp, ess, config) -> None:
         sig = inspect.signature(def_mec_fn)         # Get its signature
         args = {
             k: v
-            for k, v in {"bn": bn, "ess": ess, "data": pool}.items()
+            for k, v in {"bn": bn, "ess": config["ess"], "data": pool}.items()
             if k in sig.parameters
         }  
         cn = def_mec_fn(**args)                     # Keep only `def_mec`` args
-        base_path = out_path / config["cns_path"] / f"ESS: {ess}"
-        safe_open_dir(base_path)
+        base_path = out_path / config["cns_path"] 
         cn.saveBNsMinMax(
             f"{base_path}/bn_min_{exp}_sample{sample}.bif",
             f"{base_path}/bn_max_{exp}_sample{sample}.bif",
@@ -249,23 +247,24 @@ def phase_defense_mechanism(def_mec, exp, ess, config) -> None:
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
-def phase_attack_mechanism(atk_mec, exp, ess, config) -> None:
+def phase_attack_mechanism(atk_mec, exp, config) -> None:
 
     # Get output path
     out_path = get_out_path(config)
 
     # Read data
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    base_path = out_path / config["cns_path"] 
 
     # For each data sample ...
     for sample in range(config["samples"]):
 
         # ... read the related CN
         bn_min = gum.loadBN(
-            f"{out_path}/{config['cns_path']}/ESS: {ess}/bn_min_{exp}_sample{sample}.bif"
+            f"{base_path}/bn_min_{exp}_sample{sample}.bif"
         )
         bn_max = gum.loadBN(
-            f"{out_path}/{config['cns_path']}/ESS: {ess}/bn_max_{exp}_sample{sample}.bif"
+            f"{base_path}/bn_max_{exp}_sample{sample}.bif"
         )
 
         # ... retrieve rpop, ...
@@ -280,9 +279,7 @@ def phase_attack_mechanism(atk_mec, exp, ess, config) -> None:
             if k in sig.parameters
         }
         bn = atk_mec_fn(**args)
-        base_path = out_path / config["atk_path"] / f"ESS: {ess}"
-        safe_open_dir(base_path)
-        save_bn(bn, f"bn_{exp}_sample{sample}", base_path)
+        save_bn(bn, f"bn_{exp}_sample{sample}",  out_path / config["atk_path"])
 
     return
 
@@ -341,7 +338,7 @@ def phase_mia_vs_bn(exp, config) -> None:
 
 
 # MIA attack vs a CN
-def phase_mia_vs_cn(exp, ess, config, save_res=True) -> dict:
+def phase_mia_vs_cn(exp, config, save_res=True) -> dict:
 
     # Get output path
     out_path = get_out_path(config)
@@ -358,7 +355,7 @@ def phase_mia_vs_cn(exp, ess, config, save_res=True) -> dict:
 
         # ... read the BN as inferred from the CN
         bn_theta_hat = gum.loadBN(
-            f'{out_path}/{config["atk_path"]}/ESS: {ess}/bn_{exp}_sample{sample}.bif'
+            f'{out_path}/{config["atk_path"]}/bn_{exp}_sample{sample}.bif'
         )
 
         # ... read the BN as estimated from rpop, ...
@@ -399,11 +396,11 @@ def phase_mia_vs_cn(exp, ess, config, save_res=True) -> dict:
     # Save results
     if save_res:
         results.to_csv(
-            f'{out_path}/{config["results_path"]}/cns/cn_{exp}-ess{ess}.csv',
+            f'{out_path}/{config["results_path"]}/cns/cn_{exp}.csv',
             index=False,
         )
 
-    return {"exp": exp, "ess": ess, "auc_cn": auc_cn}
+    return {"exp": exp, "auc_cn": auc_cn}
 
 
 # Get theoretical power

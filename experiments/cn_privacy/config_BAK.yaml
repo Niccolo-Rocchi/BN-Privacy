@@ -26,7 +26,7 @@ atk_mec: 'atk_mle'                                  # Attack mechanisms to consi
 error: 'np.logspace(-4, 0, 20, endpoint=False)'     # Type-I errors vector
 
 # DEF-IDM
-ess_vec: '[1, 10, 50, 100, 1000]'                   # List of ESS
+ess: 1                                              # ESS: the amount of injected uncertainty
 
 # ATK-MLE
 n_bns: 500                                          # Number of BNs to sample within the CN
