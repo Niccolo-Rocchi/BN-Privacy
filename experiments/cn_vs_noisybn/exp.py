@@ -9,8 +9,13 @@ from joblib import Parallel, delayed
 from src.config import create_clean_dir, get_out_path, load_config, set_global_seed
 from src.data import generate_naivebayes
 from src.inference import run_inferences
-from src.mia import (phase_attack_mechanism, phase_defense_mechanism,
-                     phase_estimation, phase_find_eps, phase_mia_vs_cn)
+from src.mia import (
+    phase_attack_mechanism,
+    phase_defense_mechanism,
+    phase_estimation,
+    phase_find_eps,
+    phase_mia_vs_cn,
+)
 
 
 def main():

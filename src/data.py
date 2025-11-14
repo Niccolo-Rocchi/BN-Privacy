@@ -23,7 +23,6 @@ def generate_naivebayes(config):
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
     rpop_ss = int(gpop_ss * config["rpop_prop"])
-    n_samples = config["n_samples"]
 
     # Set BN (naive Bayes) structure
     bn_str_gen = (
@@ -51,7 +50,7 @@ def generate_naivebayes(config):
         gpop = data_gen.to_pandas()
 
         # For any data sample ...
-        for sample in range(n_samples):
+        for sample in range(config["samples"]):
 
             # ... sample pool and rpop
             shuffled_idx = np.random.permutation(gpop.index)
@@ -89,7 +88,6 @@ def generate_randombn(config):
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
     rpop_ss = int(gpop_ss * config["rpop_prop"])
-    n_samples = config["n_samples"]
 
     # For each configuration ...
     for i, (n, r) in enumerate(product(n_nodes_vec, edge_ratio_vec)):
@@ -111,7 +109,7 @@ def generate_randombn(config):
         gpop = data_gen.to_pandas()
 
         # For any data sample ...
-        for sample in range(n_samples):
+        for sample in range(config["samples"]):
 
             # ... sample pool and rpop
             shuffled_idx = np.random.permutation(gpop.index)

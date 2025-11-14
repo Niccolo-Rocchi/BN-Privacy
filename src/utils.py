@@ -149,7 +149,7 @@ def get_min_max_bns(cn, exp: str):
 
 
 # Sample from a credal set K(x | pi_x), i.e., a constrained polytope.
-def sample_from_cset(vec_min, vec_max, n_samples) -> list:
+def sample_from_cset(vec_min, vec_max, n_bns) -> list:
     """
     We assume a credal set is a polytope in a space of #X parameters, defined by a:
      - Multi-dimensional rectangle, i.e., inequality constraint Ax <= b, and
@@ -175,7 +175,7 @@ def sample_from_cset(vec_min, vec_max, n_samples) -> list:
     # Sample from the polytope
     mc = hopsy.MarkovChain(constrained_rectangle)
     rng = hopsy.RandomNumberGenerator(42)
-    _, constrained_samples = hopsy.sample(mc, rng, n_samples, thinning=10)
+    _, constrained_samples = hopsy.sample(mc, rng, n_bns, thinning=10)
     constrained_samples = constrained_samples[0]
 
     # Debug
@@ -183,7 +183,7 @@ def sample_from_cset(vec_min, vec_max, n_samples) -> list:
     safe_assert(n_par == len(vec_max))
     safe_assert(n_par == A.shape[1])
     safe_assert(n_par == A_eq.shape[1])
-    safe_assert(len(constrained_samples) == n_samples)
+    safe_assert(len(constrained_samples) == n_bns)
     for i in constrained_samples:
         safe_assert(len(i) == n_par)
 
@@ -191,7 +191,7 @@ def sample_from_cset(vec_min, vec_max, n_samples) -> list:
 
 
 # Sample from two extreme CPTs
-def sample_from_cpts(cpt_min, cpt_max, n_samples) -> list:
+def sample_from_cpts(cpt_min, cpt_max, n_bns) -> list:
 
     # Transform CPTs into pandas dataframes
     cpt_min = np.atleast_2d(cpt_min.topandas())
@@ -201,12 +201,12 @@ def sample_from_cpts(cpt_min, cpt_max, n_samples) -> list:
     credal_dict = {}
     for row in range(cpt_min.shape[0]):
 
-        # ... sample `n_samples` points from the credal set
-        credal_dict[row] = sample_from_cset(cpt_min[row, :], cpt_max[row, :], n_samples)
+        # ... sample `n_bns` points from the credal set
+        credal_dict[row] = sample_from_cset(cpt_min[row, :], cpt_max[row, :], n_bns)
 
     # For each sample ...
     cpt_samples = []
-    for i in range(n_samples):
+    for i in range(n_bns):
 
         # ... build the CPT
         cpt = []
@@ -219,13 +219,13 @@ def sample_from_cpts(cpt_min, cpt_max, n_samples) -> list:
     # Debug
     safe_assert(cpt_min.shape == cpt_max.shape)
     safe_assert(len(credal_dict) == cpt_min.shape[0])
-    safe_assert(len(cpt_samples) == n_samples)
+    safe_assert(len(cpt_samples) == n_bns)
 
     return cpt_samples
 
 
 # BNs sampler from a CN
-def sample_from_cn(bn_min, bn_max, exp: str, n_samples: int) -> list:
+def sample_from_cn(bn_min, bn_max, n_bns: int) -> list:
 
     # Get the DAG and extreme BNs
     dag = gum.BayesNet(bn_min)
@@ -234,12 +234,12 @@ def sample_from_cn(bn_min, bn_max, exp: str, n_samples: int) -> list:
     cpts_dict = {}
     for var in dag.names():
 
-        # ... sample `n_samples` CPTs from the CN
-        cpts_dict[var] = sample_from_cpts(bn_min.cpt(var), bn_max.cpt(var), n_samples)
+        # ... sample `n_bns` CPTs from the CN
+        cpts_dict[var] = sample_from_cpts(bn_min.cpt(var), bn_max.cpt(var), n_bns)
 
     # For each sample ...
     bns = []
-    for i in range(n_samples):
+    for i in range(n_bns):
 
         # ... init an empty BN ...
         bn = gum.BayesNet(dag)
@@ -255,7 +255,7 @@ def sample_from_cn(bn_min, bn_max, exp: str, n_samples: int) -> list:
 
     # Debug
     safe_assert(len(cpts_dict) == len(dag.names()))
-    safe_assert(len(bns) == n_samples)
+    safe_assert(len(bns) == n_bns)
 
     return bns
 

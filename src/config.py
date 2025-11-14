@@ -11,7 +11,7 @@ import yaml
 def load_config(name: str):
 
     subdir = "test" if os.getenv("USE_TEST_CONFIG") == "1" else "experiments"
-    
+
     config_path = get_root_path() / subdir / name / "config.yaml"
 
     with open(config_path, "r") as f:

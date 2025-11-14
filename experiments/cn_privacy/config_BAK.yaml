@@ -18,11 +18,11 @@ n_modmax: 2                                         # Maximum number of variable
 gpop_ss: 10000                                      # Sample size of general population
 rpop_prop: 0.5                                      # Sample size of reference population = gpop_ss * rpop_prop
 pool_prop: 0.25                                     # Sample size of pool population = gpop_ss * pool_prop
+samples: 20                                         # Number of data samples
 
 # MIA
 def_mec: 'def_idm'                                  # Defense mechanisms to consider
 atk_mec: 'atk_mle'                                  # Attack mechanisms to consider
-n_samples: 20                                       # Number of data samples
 error: 'np.logspace(-4, 0, 20, endpoint=False)'     # Type-I errors vector
 
 # DEF-IDM

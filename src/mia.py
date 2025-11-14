@@ -1,3 +1,4 @@
+import inspect
 import math
 
 import numpy as np
@@ -80,7 +81,7 @@ def phase_find_eps(exp, ess, config) -> dict:
         auc_noisy_bns = []
 
         # ... and for each data sample ...
-        for sample in range(config["n_samples"]):
+        for sample in range(config["samples"]):
 
             # ... read the BNs as estimated from rpop and pool, ...
             bn_theta = gum.loadBN(
@@ -122,7 +123,7 @@ def phase_find_eps(exp, ess, config) -> dict:
             #         log.write(traceback.format_exc())
 
         # Compute Avg(AUC(eps)) across data samples
-        auc_noisy_bn = sum(auc_noisy_bns) / config["n_samples"]
+        auc_noisy_bn = sum(auc_noisy_bns) / config["samples"]
 
         # Condition on |AUC(eps) - AUC(CN)|
         if abs(auc_cn - auc_noisy_bn) <= config["tol"]:
@@ -130,7 +131,7 @@ def phase_find_eps(exp, ess, config) -> dict:
             break
 
     # Save noisy BNs
-    for sample in range(config["n_samples"]):
+    for sample in range(config["samples"]):
         bn_theta_hat = gum.loadBN(
             f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
@@ -178,7 +179,7 @@ def phase_estimation(exp, config) -> None:
     safe_assert(n_nodes == gpop.loc[:, ~gpop.columns.str.contains("in-")].shape[1])
 
     # For each data sample ...
-    for sample in range(config["n_samples"]):
+    for sample in range(config["samples"]):
 
         # ... retrieve pool and rpop, ...
         pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes]
@@ -186,11 +187,19 @@ def phase_estimation(exp, config) -> None:
 
         # ... estimate BN from rpop, ...
         bn_learnt = learn_bn_params(bn, rpop)
-        save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config['bns_path'] / "rpop")
+        save_bn(
+            bn_learnt,
+            f"bn_{exp}_sample{sample}",
+            out_path / config["bns_path"] / "rpop",
+        )
 
         # ... estimate BN from pool, ...
         bn_learnt = learn_bn_params(bn, pool)
-        save_bn(bn_learnt, f"bn_{exp}_sample{sample}", out_path / config['bns_path'] / "pool")
+        save_bn(
+            bn_learnt,
+            f"bn_{exp}_sample{sample}",
+            out_path / config["bns_path"] / "pool",
+        )
 
         # Debug
         safe_assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
@@ -210,17 +219,25 @@ def phase_defense_mechanism(def_mec, exp, ess, config) -> None:
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
 
     # For each data sample ...
-    for sample in range(config["n_samples"]):
+    for sample in range(config["samples"]):
 
         # ... read the related BN
-        bn = gum.loadBN(f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif")
+        bn = gum.loadBN(
+            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
+        )
 
         # ... retrieve pool, ...
         pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, : len(bn.nodes())]
 
         # ... and derive the CN
-        def_mec_fn = getattr(src.defenses, def_mec)
-        cn = def_mec_fn(bn, ess, pool)
+        def_mec_fn = getattr(src.defenses, def_mec) # Get the related function
+        sig = inspect.signature(def_mec_fn)         # Get its signature
+        args = {
+            k: v
+            for k, v in {"bn": bn, "ess": ess, "data": pool}.items()
+            if k in sig.parameters
+        }  
+        cn = def_mec_fn(**args)                     # Keep only `def_mec`` args
         base_path = out_path / config["cns_path"] / f"ESS: {ess}"
         safe_open_dir(base_path)
         cn.saveBNsMinMax(
@@ -241,7 +258,7 @@ def phase_attack_mechanism(atk_mec, exp, ess, config) -> None:
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
 
     # For each data sample ...
-    for sample in range(config["n_samples"]):
+    for sample in range(config["samples"]):
 
         # ... read the related CN
         bn_min = gum.loadBN(
@@ -255,15 +272,17 @@ def phase_attack_mechanism(atk_mec, exp, ess, config) -> None:
         rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_min.nodes())]
 
         # ... and derive the BN
-        atk_mec_fn = getattr(src.attacks, atk_mec)
-        bn = atk_mec_fn(bn_min, bn_max, rpop, exp, config)
+        atk_mec_fn = getattr(src.attacks, atk_mec)  # Get the related function
+        sig = inspect.signature(atk_mec_fn)         # Get its signature
+        args = {
+            k: v
+            for k, v in {"bn_min": bn_min,"bn_max": bn_max, "data": rpop, "n_bns":config["n_bns"]}.items()
+            if k in sig.parameters
+        }
+        bn = atk_mec_fn(**args)
         base_path = out_path / config["atk_path"] / f"ESS: {ess}"
         safe_open_dir(base_path)
-        save_bn(
-            bn,
-            f"bn_{exp}_sample{sample}",
-            base_path
-        )
+        save_bn(bn, f"bn_{exp}_sample{sample}", base_path)
 
     return
 
@@ -281,7 +300,7 @@ def phase_mia_vs_bn(exp, config) -> None:
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
 
     # For each data sample ...
-    for sample in range(config["n_samples"]):
+    for sample in range(config["samples"]):
 
         # ... read the BNs as estimated from rpop and pool, ...
         bn_theta = gum.loadBN(
@@ -335,7 +354,7 @@ def phase_mia_vs_cn(exp, ess, config, save_res=True) -> dict:
 
     # For each data sample ...
     auc_cns = []
-    for sample in range(config["n_samples"]):
+    for sample in range(config["samples"]):
 
         # ... read the BN as inferred from the CN
         bn_theta_hat = gum.loadBN(
@@ -380,7 +399,8 @@ def phase_mia_vs_cn(exp, ess, config, save_res=True) -> dict:
     # Save results
     if save_res:
         results.to_csv(
-            f'{out_path}/{config["results_path"]}/cns/cn_{exp}-ess{ess}.csv', index=False
+            f'{out_path}/{config["results_path"]}/cns/cn_{exp}-ess{ess}.csv',
+            index=False,
         )
 
     return {"exp": exp, "ess": ess, "auc_cn": auc_cn}
