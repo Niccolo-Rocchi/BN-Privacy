@@ -1,3 +1,4 @@
+import inspect
 import math
 
 import numpy as np
@@ -39,8 +40,14 @@ def run_inferences(exp, config):
     bn = learn_bn_params(gt, gpop)
 
     # Learn CN from gpop (defense mechanism)        #TODO: save results
-    def_mec_fn = getattr(src.defenses, def_mec)
-    cn = def_mec_fn(bn, config["ess"], gpop)
+    def_mec_fn = getattr(src.defenses, def_mec)     # Get the related function
+    sig = inspect.signature(def_mec_fn)             # Get its signature
+    args = {
+        k: v
+        for k, v in {"bn": bn, "ess": config["ess"], "delta": config["delta"], "data": gpop}.items()
+        if k in sig.parameters
+    }
+    cn = def_mec_fn(**args)                         # Keep only `def_mec`` args
 
     # Learn noisy BN from gpop                      #TODO: save results
     scale = (2 * bn.size()) / (len(gpop) * eps)

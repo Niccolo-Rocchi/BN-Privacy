@@ -233,9 +233,9 @@ def phase_defense_mechanism(def_mec, exp, config) -> None:
         sig = inspect.signature(def_mec_fn)         # Get its signature
         args = {
             k: v
-            for k, v in {"bn": bn, "ess": config["ess"], "data": pool}.items()
+            for k, v in {"bn": bn, "ess": config["ess"], "delta": config["delta"],"data": pool}.items()
             if k in sig.parameters
-        }  
+        }
         cn = def_mec_fn(**args)                     # Keep only `def_mec`` args
         base_path = out_path / config["cns_path"] 
         cn.saveBNsMinMax(

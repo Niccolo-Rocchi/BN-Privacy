@@ -35,6 +35,9 @@ eps_vec: 'np.arange(0.1, 10, 0.1)'                  # Epsilon to consider for no
 # DEF-IDM
 ess: 1                                              # ESS: the amount of injected uncertainty
 
+# DEF-RAN
+delta: 0.3                                          # Size of random interval for each BN parameter (should be 0 < delta <= 1)
+
 # ATK-MLE
 n_bns: 50                                           # Number of BNs to sample within the CN
 

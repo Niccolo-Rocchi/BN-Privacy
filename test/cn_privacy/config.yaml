@@ -21,12 +21,15 @@ pool_prop: 0.25                                     # Sample size of pool popula
 samples: 5                                          # Number of data samples
 
 # MIA
-def_mec: 'def_idm'                                  # Defense mechanisms to consider
+def_mec: 'def_ran'                                  # Defense mechanisms to consider
 atk_mec: 'atk_mle'                                  # Attack mechanisms to consider
 error: 'np.logspace(-4, 0, 10, endpoint=False)'     # Type-I errors vector
 
 # DEF-IDM
 ess: 1                                              # ESS: the amount of injected uncertainty
+
+# DEF-RAN
+delta: 0.3                                          # Size of random interval for each BN parameter (should be 0 < delta <= 1)
 
 # ATK-MLE
 n_bns: 5                                            # Number of BNs to sample within the CN

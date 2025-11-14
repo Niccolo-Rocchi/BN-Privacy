@@ -28,6 +28,9 @@ error: 'np.logspace(-4, 0, 10, endpoint=False)'     # Type-I errors vector
 # DEF-IDM
 ess: 1                                              # ESS: the amount of injected uncertainty
 
+# DEF-RAN
+delta: 0.3                                          # Size of random interval for each BN parameter (should be 0 < delta <= 1)
+
 # ATK-MLE
 n_bns: 5                                            # Number of BNs to sample within the CN
 
