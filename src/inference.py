@@ -6,22 +6,21 @@ import pandas as pd
 import pyagrum as gum
 from more_itertools import random_product
 
-from src.config import get_out_path, set_global_seed
-from src.mia import learn_bn_params
-from src.utils import get_min_max_bns, noisy_bn, safe_assert
-import src.defenses
+import src.defense
+from src.config import get_out_path, safe_assert, set_global_seed
+from src.defense import noisy_bn
+from src.learning import learn_bn_params
+from src.utils import get_min_max_bns
 
 
-def run_inferences(exp, config):
+def inferences(exp, config):
 
     out_path = get_out_path(config)
     target = config["target_var"]
     def_mec = config["def_mec"]
 
     auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
-    eps = auc_meta.loc[
-        auc_meta["exp"] == exp, "eps"
-    ].values[0]
+    eps = auc_meta.loc[auc_meta["exp"] == exp, "eps"].values[0]
 
     # Set seed
     set_global_seed(config["seed"])
@@ -40,14 +39,19 @@ def run_inferences(exp, config):
     bn = learn_bn_params(gt, gpop)
 
     # Learn CN from gpop (defense mechanism)        #TODO: save results
-    def_mec_fn = getattr(src.defenses, def_mec)     # Get the related function
-    sig = inspect.signature(def_mec_fn)             # Get its signature
+    def_mec_fn = getattr(src.defense, def_mec)  # Get the related function
+    sig = inspect.signature(def_mec_fn)  # Get its signature
     args = {
         k: v
-        for k, v in {"bn": bn, "ess": config["ess"], "delta": config["delta"], "data": gpop}.items()
+        for k, v in {
+            "bn": bn,
+            "ess": config["ess"],
+            "delta": config["delta"],
+            "data": gpop,
+        }.items()
         if k in sig.parameters
     }
-    cn = def_mec_fn(**args)                         # Keep only `def_mec`` args
+    cn = def_mec_fn(**args)  # Keep only `def_mec`` args
 
     # Learn noisy BN from gpop                      #TODO: save results
     scale = (2 * bn.size()) / (len(gpop) * eps)

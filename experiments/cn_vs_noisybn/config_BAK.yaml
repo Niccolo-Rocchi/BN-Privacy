@@ -24,7 +24,7 @@ pool_prop: 0.25                                     # Sample size of pool popula
 samples: 30                                         # Number of data samples
 
 # MIA
-def_mec: 'def_idm'                                  # Defense mechanisms to consider
+def_mec: 'def_ran'                                  # Defense mechanisms to consider
 atk_mec: 'atk_mle'                                  # Attack mechanisms to consider
 tol: 0.01                                           # To find eps s.t. |AUC(eps) - AUC(CN)| < tol
 error: 'np.logspace(-4, 0, 25, endpoint=False)'     # Type-I errors vector

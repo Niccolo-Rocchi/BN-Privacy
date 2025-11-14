@@ -1,4 +1,3 @@
-import inspect
 import math
 
 import numpy as np
@@ -7,55 +6,156 @@ import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
 
-import src.attacks
-import src.defenses
 from src.config import get_out_path
-from src.utils import get_llr, noisy_bn, safe_assert, safe_open_dir, save_bn
+from src.defense import noisy_bn
 
 
-# Get the attack power related to a fixed error
-def get_power(llr_ref, llr_gen, ground_truth, error) -> float:
+# MIA attack vs a BN
+def mia_vs_bn(exp, config) -> None:
 
-    # Compute the threshold
-    t = np.quantile(llr_ref, 1 - error).item()
+    # Get output path
+    out_path = get_out_path(config)
 
-    # Test: L(x) > t => reject H_0 => assign `x` to target_pop
-    y_pred = llr_gen > t
+    # Init results
+    results = pd.DataFrame({"error": eval(config["error"])})
 
-    # Compute power (i.e., true positive rate)
-    power = sum(ground_truth & y_pred) / sum(ground_truth)
+    # Read data
+    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
 
-    return power
+    # For each data sample ...
+    for sample in range(config["samples"]):
+
+        # ... read the BNs as estimated from rpop and pool, ...
+        bn_theta = gum.loadBN(
+            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
+        )
+        bn_theta_hat = gum.loadBN(
+            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
+        )
+
+        bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
+        bn_theta_ie = gum.LazyPropagation(bn_theta)
+
+        # ... retrieve rpop, ...
+        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
+
+        # try:
+
+        # ... and perform membership inference on gpop
+        power_vec, _ = run_mia(
+            bn_theta_hat_ie,
+            bn_theta_ie,
+            rpop,
+            gpop,
+            gpop[f"in-pool-{sample}"],
+            eval(config["error"]),
+        )
+        results[f"power_BN_sample{sample}"] = power_vec
+
+        # except Exception:
+
+        #     # Debug
+        #     with open(f"{results_path}/log.txt", "a") as log:
+        #         log.write(f"{exp}: error with sample {sample} (BN).\n")
+        #         log.write(traceback.format_exc())
+
+    # Save results
+    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
 
 
-# MIA: membership inference attack
-def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
+# MIA attack vs a CN
+def mia_vs_cn(exp, config, save_res=True) -> dict:
 
-    # Compute llr(x) on reference and general populations
-    llr_ref = (
-        rpop.apply(lambda x: get_llr(x.to_dict(), baseline, model), axis=1)
-        .dropna()
-        .sort_values()
-    )
-    llr_gen = gpop[[*rpop.columns]].apply(
-        lambda x: get_llr(x.to_dict(), baseline, model), axis=1
-    )
+    # Get output path
+    out_path = get_out_path(config)
 
-    power_vec = []
+    # Init results
+    results = pd.DataFrame({"error": eval(config["error"])})
 
-    # Get the power for each error
-    for error in error_vec:
-        power = get_power(llr_ref, llr_gen, ground_truth, error)
-        power_vec.append(power)
+    # Read data
+    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
 
-    # Compute and store AUC
-    auc = metrics.auc(error_vec, power_vec)
+    # For each data sample ...
+    auc_cns = []
+    for sample in range(config["samples"]):
 
-    return power_vec, auc
+        # ... read the BN as inferred from the CN
+        bn_theta_hat = gum.loadBN(
+            f'{out_path}/{config["atk_path"]}/bn_{exp}_sample{sample}.bif'
+        )
+
+        # ... read the BN as estimated from rpop, ...
+        bn_theta = gum.loadBN(
+            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
+        )
+
+        bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
+        bn_theta_ie = gum.LazyPropagation(bn_theta)
+
+        # ... retrieve rpop, ...
+        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
+
+        # try:
+
+        # ... and perform membership inference on gpop
+        power_vec, auc = run_mia(
+            bn_theta_hat_ie,
+            bn_theta_ie,
+            rpop,
+            gpop,
+            gpop[f"in-pool-{sample}"],
+            eval(config["error"]),
+        )
+        results[f"power_CN_sample{sample}"] = power_vec
+        auc_cns.append(auc)
+
+        # except Exception:
+
+        #     # Debug
+        #     with open(f"{results_path}/log.txt", "a") as log:
+        #         log.write(f"{exp}: error with sample {sample} (BN).\n")
+        #         log.write(traceback.format_exc())
+
+    # Compute Avg(AUC(CN)) across data samples
+    auc_cn = sum(auc_cns) / len(auc_cns)
+
+    # Save results
+    if save_res:
+        results.to_csv(
+            f'{out_path}/{config["results_path"]}/cns/cn_{exp}.csv',
+            index=False,
+        )
+
+    return {"exp": exp, "auc_cn": auc_cn}
+
+
+# Get theoretical power
+def theoretical_power(exp, config) -> None:
+
+    # Get output path
+    out_path = get_out_path(config)
+
+    # Read data
+    bn = gum.loadBN(f'{get_out_path(config) / config["bns_path"]}/gt/{exp}.bif')
+    results = pd.read_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv')
+
+    # Compute bound
+    bound = math.sqrt(bn.dim() / int(config["gpop_ss"] * config["pool_prop"]))
+
+    # Find power (beta) for any error (alpha) given theoretical bound
+    z_alpha = [norm.ppf(1 - i).item() for i in eval(config["error"])]
+    z_one_minus_beta = [bound - i for i in z_alpha]
+    beta = [norm.cdf(i).item() for i in z_one_minus_beta]
+
+    # Save results
+    results["power_bound"] = beta
+    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
+
+    return
 
 
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
-def phase_find_eps(exp, config) -> dict:
+def find_epsilon(exp, config) -> dict:
 
     # Get output path
     out_path = get_out_path(config)
@@ -65,9 +165,7 @@ def phase_find_eps(exp, config) -> dict:
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
     auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
-    auc_cn = auc_meta.loc[
-        auc_meta["exp"] == exp, "auc_cn"
-    ].values[0]
+    auc_cn = auc_meta.loc[auc_meta["exp"] == exp, "auc_cn"].values[0]
     eps_vec = eval(config["eps_vec"])
 
     eps_best = eps_vec[-1]
@@ -137,7 +235,10 @@ def phase_find_eps(exp, config) -> dict:
         )
         scale = (2 * bn_theta_hat.size()) / (pool_ss * eps_best)
         bn_noisy = noisy_bn(bn_theta_hat, scale)
-        save_bn(bn_noisy, f"bn_{exp}_sample{sample}", out_path / config["noisy_path"])
+        gum.saveBN(
+            bn_noisy,
+            f'{out_path / config["noisy_path"]}/{f"bn_{exp}_sample{sample}"}.bif',
+        )
 
     return {
         "exp": exp,
@@ -147,282 +248,64 @@ def phase_find_eps(exp, config) -> dict:
     }
 
 
-# Learn BN parameters from a given BN and data
-def learn_bn_params(bn, data):
+# MIA: membership inference attack
+def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
 
-    bn_copy = gum.BayesNet(bn)
+    # Compute llr(x) on reference and general populations
+    llr_ref = (
+        rpop.apply(lambda x: get_llr(x.to_dict(), baseline, model), axis=1)
+        .dropna()
+        .sort_values()
+    )
+    llr_gen = gpop[[*rpop.columns]].apply(
+        lambda x: get_llr(x.to_dict(), baseline, model), axis=1
+    )
 
-    learner = gum.BNLearner(data, bn_copy)
-    learner.useSmoothingPrior(1e-5)
-    bn_learnt = learner.learnParameters(bn_copy)
+    power_vec = []
 
-    return bn_learnt
+    # Get the power for each error
+    for error in error_vec:
+        power = get_power(llr_ref, llr_gen, ground_truth, error)
+        power_vec.append(power)
 
+    # Compute and store AUC
+    auc = metrics.auc(error_vec, power_vec)
 
-# Estimate BNs from rpop and pool
-def phase_estimation(exp, config) -> None:
+    return power_vec, auc
 
-    # Get output path
-    out_path = get_out_path(config)
-
-    # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
-    bn = gum.loadBN(f'{out_path / config["bns_path"]}/gt/{exp}.bif')
-    n_nodes = len(bn.nodes())
-    gpop_ss = config["gpop_ss"]
-    rpop_ss = int(gpop_ss * config["rpop_prop"])
-    pool_ss = int(gpop_ss * config["pool_prop"])
-
-    # Debug
-    safe_assert(gpop_ss == gpop.shape[0])
-    safe_assert(n_nodes == gpop.loc[:, ~gpop.columns.str.contains("in-")].shape[1])
-
-    # For each data sample ...
-    for sample in range(config["samples"]):
-
-        # ... retrieve pool and rpop, ...
-        pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, :n_nodes]
-        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, :n_nodes]
-
-        # ... estimate BN from rpop, ...
-        bn_learnt = learn_bn_params(bn, rpop)
-        save_bn(
-            bn_learnt,
-            f"bn_{exp}_sample{sample}",
-            out_path / config["bns_path"] / "rpop",
-        )
 
-        # ... estimate BN from pool, ...
-        bn_learnt = learn_bn_params(bn, pool)
-        save_bn(
-            bn_learnt,
-            f"bn_{exp}_sample{sample}",
-            out_path / config["bns_path"] / "pool",
-        )
+# Get the attack power related to a fixed error
+def get_power(llr_ref, llr_gen, ground_truth, error) -> float:
 
-        # Debug
-        safe_assert(len(pool) == sum(gpop[f"in-pool-{sample}"]))
-        safe_assert(len(pool) == pool_ss)
-        safe_assert(len(rpop) == rpop_ss)
-
-    return
-
+    # Compute the threshold
+    t = np.quantile(llr_ref, 1 - error).item()
 
-# Apply defense mechanism to a BN, namely, derive a CN from a BN
-def phase_defense_mechanism(def_mec, exp, config) -> None:
+    # Test: L(x) > t => reject H_0 => assign `x` to target_pop
+    y_pred = llr_gen > t
 
-    # Get output path
-    out_path = get_out_path(config)
+    # Compute power (i.e., true positive rate)
+    power = sum(ground_truth & y_pred) / sum(ground_truth)
 
-    # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    return power
 
-    # For each data sample ...
-    for sample in range(config["samples"]):
 
-        # ... read the related BN
-        bn = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
-        )
-
-        # ... retrieve pool, ...
-        pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, : len(bn.nodes())]
-
-        # ... and derive the CN
-        def_mec_fn = getattr(src.defenses, def_mec) # Get the related function
-        sig = inspect.signature(def_mec_fn)         # Get its signature
-        args = {
-            k: v
-            for k, v in {"bn": bn, "ess": config["ess"], "delta": config["delta"],"data": pool}.items()
-            if k in sig.parameters
-        }
-        cn = def_mec_fn(**args)                     # Keep only `def_mec`` args
-        base_path = out_path / config["cns_path"] 
-        cn.saveBNsMinMax(
-            f"{base_path}/bn_min_{exp}_sample{sample}.bif",
-            f"{base_path}/bn_max_{exp}_sample{sample}.bif",
-        )
+# Log-likelihood function
+def get_ll(x: dict, theta):
 
-    return
+    # Erase all evidences and apply addEvidence(key,value) for every pairs in x
+    theta.setEvidence(x)
 
+    # Compute P(x | theta)
+    ll = theta.evidenceProbability()
 
-# Apply attack mechanism to a BN, namely, derive a BN from a CN
-def phase_attack_mechanism(atk_mec, exp, config) -> None:
+    return np.log(ll)
 
-    # Get output path
-    out_path = get_out_path(config)
 
-    # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
-    base_path = out_path / config["cns_path"] 
+# Log-likelihood ratio (llr) function
+def get_llr(x: dict, theta, theta_hat):
 
-    # For each data sample ...
-    for sample in range(config["samples"]):
+    # Compute log-likelihoods
+    ll_theta = get_ll(x, theta)
+    ll_theta_hat = get_ll(x, theta_hat)
 
-        # ... read the related CN
-        bn_min = gum.loadBN(
-            f"{base_path}/bn_min_{exp}_sample{sample}.bif"
-        )
-        bn_max = gum.loadBN(
-            f"{base_path}/bn_max_{exp}_sample{sample}.bif"
-        )
-
-        # ... retrieve rpop, ...
-        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_min.nodes())]
-
-        # ... and derive the BN
-        atk_mec_fn = getattr(src.attacks, atk_mec)  # Get the related function
-        sig = inspect.signature(atk_mec_fn)         # Get its signature
-        args = {
-            k: v
-            for k, v in {"bn_min": bn_min,"bn_max": bn_max, "data": rpop, "n_bns":config["n_bns"]}.items()
-            if k in sig.parameters
-        }
-        bn = atk_mec_fn(**args)
-        save_bn(bn, f"bn_{exp}_sample{sample}",  out_path / config["atk_path"])
-
-    return
-
-
-# MIA attack vs a BN
-def phase_mia_vs_bn(exp, config) -> None:
-
-    # Get output path
-    out_path = get_out_path(config)
-
-    # Init results
-    results = pd.DataFrame({"error": eval(config["error"])})
-
-    # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
-
-    # For each data sample ...
-    for sample in range(config["samples"]):
-
-        # ... read the BNs as estimated from rpop and pool, ...
-        bn_theta = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
-        )
-        bn_theta_hat = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
-        )
-
-        bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
-        bn_theta_ie = gum.LazyPropagation(bn_theta)
-
-        # ... retrieve rpop, ...
-        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
-
-        # try:
-
-        # ... and perform membership inference on gpop
-        power_vec, _ = run_mia(
-            bn_theta_hat_ie,
-            bn_theta_ie,
-            rpop,
-            gpop,
-            gpop[f"in-pool-{sample}"],
-            eval(config["error"]),
-        )
-        results[f"power_BN_sample{sample}"] = power_vec
-
-        # except Exception:
-
-        #     # Debug
-        #     with open(f"{results_path}/log.txt", "a") as log:
-        #         log.write(f"{exp}: error with sample {sample} (BN).\n")
-        #         log.write(traceback.format_exc())
-
-    # Save results
-    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
-
-
-# MIA attack vs a CN
-def phase_mia_vs_cn(exp, config, save_res=True) -> dict:
-
-    # Get output path
-    out_path = get_out_path(config)
-
-    # Init results
-    results = pd.DataFrame({"error": eval(config["error"])})
-
-    # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
-
-    # For each data sample ...
-    auc_cns = []
-    for sample in range(config["samples"]):
-
-        # ... read the BN as inferred from the CN
-        bn_theta_hat = gum.loadBN(
-            f'{out_path}/{config["atk_path"]}/bn_{exp}_sample{sample}.bif'
-        )
-
-        # ... read the BN as estimated from rpop, ...
-        bn_theta = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
-        )
-
-        bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
-        bn_theta_ie = gum.LazyPropagation(bn_theta)
-
-        # ... retrieve rpop, ...
-        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
-
-        # try:
-
-        # ... and perform membership inference on gpop
-        power_vec, auc = run_mia(
-            bn_theta_hat_ie,
-            bn_theta_ie,
-            rpop,
-            gpop,
-            gpop[f"in-pool-{sample}"],
-            eval(config["error"]),
-        )
-        results[f"power_CN_sample{sample}"] = power_vec
-        auc_cns.append(auc)
-
-        # except Exception:
-
-        #     # Debug
-        #     with open(f"{results_path}/log.txt", "a") as log:
-        #         log.write(f"{exp}: error with sample {sample} (BN).\n")
-        #         log.write(traceback.format_exc())
-
-    # Compute Avg(AUC(CN)) across data samples
-    auc_cn = sum(auc_cns) / len(auc_cns)
-
-    # Save results
-    if save_res:
-        results.to_csv(
-            f'{out_path}/{config["results_path"]}/cns/cn_{exp}.csv',
-            index=False,
-        )
-
-    return {"exp": exp, "auc_cn": auc_cn}
-
-
-# Get theoretical power
-def phase_theoretical_power(exp, config) -> None:
-
-    # Get output path
-    out_path = get_out_path(config)
-
-    # Read data
-    bn = gum.loadBN(f'{get_out_path(config) / config["bns_path"]}/gt/{exp}.bif')
-    results = pd.read_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv')
-
-    # Compute bound
-    bound = math.sqrt(bn.dim() / int(config["gpop_ss"] * config["pool_prop"]))
-
-    # Find power (beta) for any error (alpha) given theoretical bound
-    z_alpha = [norm.ppf(1 - i).item() for i in eval(config["error"])]
-    z_one_minus_beta = [bound - i for i in z_alpha]
-    beta = [norm.cdf(i).item() for i in z_one_minus_beta]
-
-    # Save results
-    results["power_bound"] = beta
-    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
-
-    return
+    return ll_theta_hat - ll_theta

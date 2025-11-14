@@ -4,8 +4,7 @@ import numpy as np
 import pyagrum as gum
 from numpy.random import randint
 
-from src.config import create_clean_dir, get_out_path, set_global_seed
-from src.utils import safe_assert, save_bn
+from src.config import get_out_path, safe_assert, set_global_seed
 
 
 def generate_naivebayes(config):
@@ -36,9 +35,9 @@ def generate_naivebayes(config):
 
         # ... generate BN, ...
         bn = gum.fastBN(bn_str)
-        save_bn(bn, f"exp{i}", bns_path / "gt")
+        gum.saveBN(bn, f'{bns_path / "gt"}/{f"exp{i}"}.bif')
 
-        with open(f'{out_path}/{config["exp_meta"]}', "w") as m:
+        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
             m.write(
                 f'- exp{i}. Naive Bayes: {config["n_nodes"]} nodes. Complexity: {bn.dim()} Max categories: {n_modmax}\n'
             )
@@ -56,7 +55,7 @@ def generate_naivebayes(config):
             shuffled_idx = np.random.permutation(gpop.index)
 
             pool_idx = shuffled_idx[:pool_ss]
-            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
+            rpop_idx = shuffled_idx[pool_ss: pool_ss + rpop_ss]
 
             gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
             gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)
@@ -94,9 +93,9 @@ def generate_randombn(config):
         # ... generate BN, ...
         bn_gen = gum.BNGenerator()
         bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=config["n_modmax"])
-        save_bn(bn, f"exp{i}", bns_path / "gt")
+        gum.saveBN(bn, f'{bns_path / "gt"}/{f"exp{i}"}.bif')
 
-        with open(f'{out_path}/{config["exp_meta"]}', "w") as m:
+        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
             m.write(
                 f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
             )
@@ -114,7 +113,7 @@ def generate_randombn(config):
             shuffled_idx = np.random.permutation(gpop.index)
 
             pool_idx = shuffled_idx[:pool_ss]
-            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
+            rpop_idx = shuffled_idx[pool_ss: pool_ss + rpop_ss]
 
             gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
             gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)

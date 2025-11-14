@@ -1,21 +1,18 @@
 import gc
 import multiprocessing  # noqa: F401 # pylint: disable=unused-import
-from itertools import product
 
 import numpy as np  # noqa: F401 # pylint: disable=unused-import
 import pandas as pd
 from joblib import Parallel, delayed
 
-from src.config import create_clean_dir, get_out_path, load_config, set_global_seed
+from src.attack import attack_mechanism
+from src.config import (create_clean_dir, get_out_path, load_config,
+                        set_global_seed)
 from src.data import generate_naivebayes
-from src.inference import run_inferences
-from src.mia import (
-    phase_attack_mechanism,
-    phase_defense_mechanism,
-    phase_estimation,
-    phase_find_eps,
-    phase_mia_vs_cn,
-)
+from src.defense import defense_mechanism
+from src.inference import inferences
+from src.learning import estimate_bns
+from src.mia import find_epsilon, mia_vs_cn
 
 
 def main():
@@ -32,6 +29,7 @@ def main():
     print("#" * 5, "Generate BNs and data", "#" * 5)
     create_clean_dir(out_path / config["bns_path"] / "gt")
     create_clean_dir(out_path / config["data_path"])
+    open(f'{out_path}/{config["exp_meta"]}', "a").close()
     generate_naivebayes(config)
 
     # Init the vectors of experiments
@@ -44,30 +42,27 @@ def main():
     create_clean_dir(out_path / config["bns_path"] / "rpop")
     create_clean_dir(out_path / config["bns_path"] / "pool")
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_estimation)(exp, config) for exp in exp_vec
+        delayed(estimate_bns)(exp, config) for exp in exp_vec
     )
 
     # Defense mechanism
     print("#" * 5, "Defense mechanism", "#" * 5)
     create_clean_dir(out_path / config["cns_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_defense_mechanism)(def_mec, exp, config)
-        for exp in exp_vec
+        delayed(defense_mechanism)(def_mec, exp, config) for exp in exp_vec
     )
 
     # Attack mechanism
     print("#" * 5, "Attack mechanism", "#" * 5)
     create_clean_dir(out_path / config["atk_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(phase_attack_mechanism)(atk_mec, exp, config)
-        for exp in exp_vec
+        delayed(attack_mechanism)(atk_mec, exp, config) for exp in exp_vec
     )
 
     # MIA vs CN
     print("#" * 5, "MIA vs CN", "#" * 5)
     res = Parallel(n_jobs=num_cores)(
-        delayed(phase_mia_vs_cn)(exp, config, save_res=False)
-        for exp in exp_vec
+        delayed(mia_vs_cn)(exp, config, save_res=False) for exp in exp_vec
     )
     res = pd.DataFrame(res)
     res.to_csv(f'{out_path}/{config["auc_meta"]}', index=False)
@@ -76,8 +71,7 @@ def main():
     print("#" * 5, "Get epsilon", "#" * 5)
     create_clean_dir(out_path / config["noisy_path"])
     res = Parallel(n_jobs=num_cores)(
-        delayed(phase_find_eps)(exp, config)
-        for exp in exp_vec
+        delayed(find_epsilon)(exp, config) for exp in exp_vec
     )
     res = pd.DataFrame(res)
     res.to_csv(f'{out_path}/{config["auc_meta"]}', index=False)
@@ -86,8 +80,7 @@ def main():
     print("#" * 5, "Run inferences", "#" * 5)
     create_clean_dir(out_path / config["results_path"] / "inferences")
     _ = Parallel(n_jobs=num_cores)(
-        delayed(run_inferences)(exp, config)
-        for exp in exp_vec
+        delayed(inferences)(exp, config) for exp in exp_vec
     )
 
     # Clean

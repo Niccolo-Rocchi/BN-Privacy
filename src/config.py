@@ -1,10 +1,13 @@
 import os
 import random
 import shutil
+import sys
 from pathlib import Path
 
 import pyagrum as gum
 import yaml
+
+IN_PYTEST = "pytest" in sys.modules
 
 
 # Read configuration for experiment
@@ -27,9 +30,15 @@ def set_global_seed(seed: int):
     gum.initRandom(seed)
 
 
-# Get root directory
-def get_root_path():
-    return Path(__file__).resolve().parents[1]
+# Create an empty directory
+def create_clean_dir(path: Path):
+
+    # Remove the folder if already exists
+    if path.exists() and path.is_dir():
+        shutil.rmtree(path)
+
+    # Create a new folder
+    path.mkdir(parents=True, exist_ok=True)
 
 
 # Get output path
@@ -41,12 +50,12 @@ def get_out_path(config):
     return root_path / out_path
 
 
-# Create an empty directory
-def create_clean_dir(path: Path):
+# Get root directory
+def get_root_path():
+    return Path(__file__).resolve().parents[1]
 
-    # Remove the folder if already exists
-    if path.exists() and path.is_dir():
-        shutil.rmtree(path)
 
-    # Create a new folder
-    path.mkdir(parents=True, exist_ok=True)
+# Only perform an `assert` if code is running in `pytest`
+def safe_assert(condition):
+    if IN_PYTEST:
+        assert condition
