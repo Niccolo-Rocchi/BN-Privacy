@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     swig \ 
@@ -7,10 +8,16 @@ RUN apt-get update && apt-get install -y \
     python3-dev \ 
     && rm -rf /var/lib/apt/lists/*
 
+# Set working directory
 WORKDIR /workspace
 COPY . .
 
+# Install python packages
 RUN pip install --upgrade pip
 RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+# Generate models and data
+RUN python -m experiments.cn_privacy.generate
+RUN python -m experiments.cn_vs_noisybn.generate
 
 CMD /bin/sh

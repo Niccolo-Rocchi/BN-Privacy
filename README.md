@@ -36,13 +36,19 @@ pip freeze > requirements.txt
 
 ### Running code
 
-Run an experiment with: 
+1) Generate models and data:
+
+```bash
+python -m experiments.<name>.generate
+```
+
+2) Run an experiment: 
 
 ```bash
 python -m experiments.<name>.exp
 ```
 
-*Notice:* this will delete any already existing output. For storing intermediate output, comment out code in the `experiments.<name>.exp.py` file.
+*Notice:* each command will overwrite any related output.
 
 ### Using Docker (recommended)
 
