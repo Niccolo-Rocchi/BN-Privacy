@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pyagrum as gum
 
-from src.config import get_out_path, set_seed
+from src.config import get_cur_dir, set_seed
 from src.mia import get_ll
 from src.utils import sample_from_cn
 
@@ -13,11 +13,11 @@ from src.utils import sample_from_cn
 def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
 
     # Get output path
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
 
     # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
-    base_path = out_path / config["cns_path"]
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
+    base_path = cur_dir / config["cns_path"]
 
     # Set seed
     set_seed()
@@ -47,7 +47,7 @@ def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
         }
         bn = atk_mec_fn(**args)
         gum.saveBN(
-            bn, f'{out_path / config["atk_path"]}/{f"bn_{exp}_sample{sample}"}.bif'
+            bn, f'{cur_dir / config["atk_path"]}/{f"bn_{exp}_sample{sample}"}.bif'
         )
 
     return

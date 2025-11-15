@@ -6,7 +6,7 @@ import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
 
-from src.config import get_out_path, set_seed
+from src.config import get_cur_dir, set_seed
 from src.defense import noisy_bn
 
 
@@ -14,13 +14,13 @@ from src.defense import noisy_bn
 def mia_vs_bn(exp, config) -> None:
 
     # Get output path
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
 
     # Init results
     results = pd.DataFrame({"error": eval(config["error"])})
 
     # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
 
     # Set seed
     set_seed()
@@ -30,10 +30,10 @@ def mia_vs_bn(exp, config) -> None:
 
         # ... read the BNs as estimated from rpop and pool, ...
         bn_theta = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
+            f"{cur_dir}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
         )
         bn_theta_hat = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
+            f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
 
         bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
@@ -63,20 +63,20 @@ def mia_vs_bn(exp, config) -> None:
         #         log.write(traceback.format_exc())
 
     # Save results
-    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
+    results.to_csv(f'{cur_dir}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
 
 
 # MIA attack vs a CN
 def mia_vs_cn(exp, config, save_res=True) -> dict:
 
     # Get output path
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
 
     # Init results
     results = pd.DataFrame({"error": eval(config["error"])})
 
     # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
 
     # Set seed
     set_seed()
@@ -87,12 +87,12 @@ def mia_vs_cn(exp, config, save_res=True) -> dict:
 
         # ... read the BN as inferred from the CN
         bn_theta_hat = gum.loadBN(
-            f'{out_path}/{config["atk_path"]}/bn_{exp}_sample{sample}.bif'
+            f'{cur_dir}/{config["atk_path"]}/bn_{exp}_sample{sample}.bif'
         )
 
         # ... read the BN as estimated from rpop, ...
         bn_theta = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
+            f"{cur_dir}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
         )
 
         bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
@@ -128,7 +128,7 @@ def mia_vs_cn(exp, config, save_res=True) -> dict:
     # Save results
     if save_res:
         results.to_csv(
-            f'{out_path}/{config["results_path"]}/cns/cn_{exp}.csv',
+            f'{cur_dir}/{config["results_path"]}/cns/cn_{exp}.csv',
             index=False,
         )
 
@@ -139,11 +139,11 @@ def mia_vs_cn(exp, config, save_res=True) -> dict:
 def theoretical_power(exp, config) -> None:
 
     # Get output path
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
 
     # Read data
-    bn = gum.loadBN(f'{get_out_path(config) / config["bns_path"]}/gt/{exp}.bif')
-    results = pd.read_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv')
+    bn = gum.loadBN(f'{get_cur_dir(config) / config["bns_path"]}/gt/{exp}.bif')
+    results = pd.read_csv(f'{cur_dir}/{config["results_path"]}/bns/bn_{exp}.csv')
 
     # Set seed
     set_seed()
@@ -158,7 +158,7 @@ def theoretical_power(exp, config) -> None:
 
     # Save results
     results["power_bound"] = beta
-    results.to_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
+    results.to_csv(f'{cur_dir}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
 
     return
 
@@ -167,13 +167,13 @@ def theoretical_power(exp, config) -> None:
 def find_epsilon(exp, config) -> dict:
 
     # Get output path
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
 
     # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
-    auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
+    auc_meta = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
     auc_cn = auc_meta.loc[auc_meta["exp"] == exp, "auc_cn"].values[0]
     eps_vec = eval(config["eps_vec"])
 
@@ -195,10 +195,10 @@ def find_epsilon(exp, config) -> dict:
 
             # ... read the BNs as estimated from rpop and pool, ...
             bn_theta = gum.loadBN(
-                f"{out_path}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
+                f"{cur_dir}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
             )
             bn_theta_hat = gum.loadBN(
-                f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
+                f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
             )
 
             # Get noisy BN
@@ -243,13 +243,13 @@ def find_epsilon(exp, config) -> dict:
     # Save noisy BNs
     for sample in range(config["samples"]):
         bn_theta_hat = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
+            f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
         scale = (2 * bn_theta_hat.size()) / (pool_ss * eps_best)
         bn_noisy = noisy_bn(bn_theta_hat, scale)
         gum.saveBN(
             bn_noisy,
-            f'{out_path / config["noisy_path"]}/{f"bn_{exp}_sample{sample}"}.bif',
+            f'{cur_dir / config["noisy_path"]}/{f"bn_{exp}_sample{sample}"}.bif',
         )
 
     return {

@@ -16,8 +16,4 @@ COPY . .
 RUN pip install --upgrade pip
 RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-# Generate models and data
-RUN python -m experiments.cn_privacy.generate
-RUN python -m experiments.cn_vs_noisybn.generate
-
 CMD /bin/sh

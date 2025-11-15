@@ -5,15 +5,15 @@ import numpy as np
 import pyagrum as gum
 from numpy.random import randint
 
-from src.config import get_out_path, safe_assert, set_seed
+from src.config import get_cur_dir, safe_assert, set_seed
 
 
 def generate_naivebayes(config):
 
     # Set paths
-    out_path = get_out_path(config)
-    bns_path = out_path / config["bns_path"]
-    data_path = out_path / config["data_path"]
+    cur_dir = get_cur_dir(config)
+    bns_path = cur_dir / config["bns_path"]
+    data_path = cur_dir / config["data_path"]
 
     # Set seed
     set_seed()
@@ -38,7 +38,7 @@ def generate_naivebayes(config):
         bn = gum.fastBN(bn_str)
         gum.saveBN(bn, f'{bns_path / "gt"}/{f"exp{i}"}.bif')
 
-        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
+        with open(f'{cur_dir}/{config["exp_meta"]}', "a") as m:
             m.write(
                 f'- exp{i}. Naive Bayes: {config["n_nodes"]} nodes. Complexity: {bn.dim()} Max categories: {n_modmax}\n'
             )
@@ -74,9 +74,9 @@ def generate_naivebayes(config):
 def generate_randombn(config):
 
     # Set paths
-    out_path = get_out_path(config)
-    bns_path = out_path / config["bns_path"]
-    data_path = out_path / config["data_path"]
+    cur_dir = get_cur_dir(config)
+    bns_path = cur_dir / config["bns_path"]
+    data_path = cur_dir / config["data_path"]
 
     # Retrieve hyperparameters
     n_nodes_vec = ast.literal_eval(config["n_nodes_vec"])
@@ -96,7 +96,7 @@ def generate_randombn(config):
         bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=config["n_modmax"])
         gum.saveBN(bn, f'{bns_path / "gt"}/{f"exp{i}"}.bif')
 
-        with open(f'{out_path}/{config["exp_meta"]}', "a") as m:
+        with open(f'{cur_dir}/{config["exp_meta"]}', "a") as m:
             m.write(
                 f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
             )

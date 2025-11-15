@@ -1,7 +1,7 @@
 import pandas as pd
 import pyagrum as gum
 
-from src.config import get_out_path, safe_assert, set_seed
+from src.config import get_cur_dir, safe_assert, set_seed
 
 
 # Learn BN parameters from a given BN and data
@@ -20,14 +20,14 @@ def learn_bn_params(bn, data):
 def estimate_bns(exp, config) -> None:
 
     # Get output path
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
 
     # Set seed
     set_seed()
 
     # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
-    bn = gum.loadBN(f'{out_path / config["bns_path"]}/gt/{exp}.bif')
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
+    bn = gum.loadBN(f'{cur_dir / config["bns_path"]}/gt/{exp}.bif')
     n_nodes = len(bn.nodes())
     gpop_ss = config["gpop_ss"]
     rpop_ss = int(gpop_ss * config["rpop_prop"])
@@ -48,14 +48,14 @@ def estimate_bns(exp, config) -> None:
         bn_learnt = learn_bn_params(bn, rpop)
         gum.saveBN(
             bn_learnt,
-            f'{out_path / config["bns_path"] / "rpop"}/{f"bn_{exp}_sample{sample}"}.bif',
+            f'{cur_dir / config["bns_path"] / "rpop"}/{f"bn_{exp}_sample{sample}"}.bif',
         )
 
         # ... estimate BN from pool, ...
         bn_learnt = learn_bn_params(bn, pool)
         gum.saveBN(
             bn_learnt,
-            f'{out_path / config["bns_path"] / "pool"}/{f"bn_{exp}_sample{sample}"}.bif',
+            f'{cur_dir / config["bns_path"] / "pool"}/{f"bn_{exp}_sample{sample}"}.bif',
         )
 
         # Debug

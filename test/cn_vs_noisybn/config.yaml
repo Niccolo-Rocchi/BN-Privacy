@@ -1,15 +1,15 @@
 ## Configuration file
 
 # Paths
-out_path: test/cn_vs_noisybn/output                 # Output path
+cur_dir: experiments/cn_vs_noisybn                  # Current directory (contains all the following)
 bns_path: bns                                       # Where to save ground-truth BNs
-cns_path: cns                                       # Where to save CNs as obtained by def-mec from BNs learnt from pool
-atk_path: bns_atk                                   # Where to save BNs as obtained by atk-mec from CNs
-noisy_path: noisy                                   # Where to save noisy BNs
+cns_path: output/cns                                # Where to save CNs as obtained by def-mec from BNs learnt from pool
+atk_path: output/bns_atk                            # Where to save BNs as obtained by atk-mec from CNs
+noisy_path: output/noisy                            # Where to save noisy BNs
 data_path: data                                     # Where to save data as generated from ground-truth BNs
-results_path: results                               # Where to save the experiment results
+results_path: output/results                        # Where to save the experiment results
 exp_meta: exp_meta.txt                              # File of metadata for experiments
-auc_meta: auc_meta.csv                              # File of metadata for AUCs
+auc_meta: output/auc_meta.csv                       # File of metadata for AUCs
 
 # Models (Naive Bayes)
 target_var: 'T'                                     # Target variable

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pyagrum as gum
 
-from src.config import get_out_path, safe_assert, set_seed
+from src.config import get_cur_dir, safe_assert, set_seed
 from src.utils import add_counts_to_bn, check_consistency
 
 
@@ -12,10 +12,10 @@ from src.utils import add_counts_to_bn, check_consistency
 def defense_mechanism(exp, config, def_mec, def_args) -> None:
 
     # Get output path
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
 
     # Read data
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
 
     # Set seed
     set_seed()
@@ -25,7 +25,7 @@ def defense_mechanism(exp, config, def_mec, def_args) -> None:
 
         # ... read the related BN
         bn = gum.loadBN(
-            f"{out_path}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
+            f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
 
         # ... retrieve pool, ...
@@ -45,7 +45,7 @@ def defense_mechanism(exp, config, def_mec, def_args) -> None:
             if k in sig.parameters
         }
         cn = def_mec_fn(**args)  # Keep only `def_mec` args
-        base_path = out_path / config["cns_path"]
+        base_path = cur_dir / config["cns_path"]
         cn.saveBNsMinMax(
             f"{base_path}/bn_min_{exp}_sample{sample}.bif",
             f"{base_path}/bn_max_{exp}_sample{sample}.bif",

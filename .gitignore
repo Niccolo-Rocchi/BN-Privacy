@@ -1,5 +1,8 @@
 venv
 output*
+bns
+data
+*meta.txt
 bin
 __pycache__
 .pytest_cache

@@ -14,8 +14,8 @@ IN_PYTEST = "pytest" in sys.modules
 def map_sys_args(sys_args, config) -> tuple:
 
     # Store parameters
-    params = dict([arg.split("=") for arg in sys_args])
-    with open(f'{config["out_path"]}/{config["exp_meta"]}', "a") as m:
+    params = dict([arg.split("=") for arg in sys_args if "=" in arg])
+    with open(f'{config["cur_dir"]}/{config["exp_meta"]}', "a") as m:
         m.write(f"\n Defense & attack parameters: \n {params}")
 
     # Get defense and attack mechanisms
@@ -81,15 +81,15 @@ def create_clean_dir(path: Path):
 
 
 # Get output path
-def get_out_path(config):
+def get_cur_dir(config):
 
     root_path = get_root_path()
-    out_path = config["out_path"]
+    cur_dir = config["cur_dir"]
 
-    return root_path / out_path
+    return root_path / cur_dir
 
 
-# Get root directory
+# Get root (project) directory
 def get_root_path():
     return Path(__file__).resolve().parents[1]
 

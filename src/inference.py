@@ -7,7 +7,7 @@ import pyagrum as gum
 from more_itertools import random_product
 
 import src.defense
-from src.config import get_out_path, safe_assert, set_seed
+from src.config import get_cur_dir, safe_assert, set_seed
 from src.defense import noisy_bn
 from src.learning import learn_bn_params
 from src.utils import get_min_max_bns
@@ -16,12 +16,12 @@ from src.utils import get_min_max_bns
 def inferences(exp, config):
 
     # Read config
-    out_path = get_out_path(config)
+    cur_dir = get_cur_dir(config)
     target = config["target_var"]
     def_mec = config["def_mec"]
 
     # Read data
-    auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
+    auc_meta = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
     eps = auc_meta.loc[auc_meta["exp"] == exp, "eps"].values[0]
 
     # Set seed
@@ -34,8 +34,8 @@ def inferences(exp, config):
     ]
 
     # Store ground-truth BN
-    gt = gum.loadBN(f'{out_path / config["bns_path"]}/gt/{exp}.bif')
-    gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+    gt = gum.loadBN(f'{cur_dir / config["bns_path"]}/gt/{exp}.bif')
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
 
     # Learn BN from gpop                            #TODO: save results
     bn = learn_bn_params(gt, gpop)
@@ -80,7 +80,7 @@ def inferences(exp, config):
     )
 
     results.to_csv(
-        f'{out_path / config["results_path"]}/inferences/{exp}.csv',
+        f'{cur_dir / config["results_path"]}/inferences/{exp}.csv',
         index=False,
     )
 
