@@ -45,7 +45,6 @@ n_bns: 50                                           # Number of BNs to sample wi
 n_infer: 1000                                       # Number of inferences to perform
 
 # Other
-seed: 42                                            # Global seed
 num_cores: 'multiprocessing.cpu_count() - 1'        # Number of threads to use for parallelization
 
 ## Notes

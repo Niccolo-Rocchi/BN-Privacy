@@ -4,8 +4,7 @@ import multiprocessing  # noqa: F401 # pylint: disable=unused-import
 import numpy as np  # noqa: F401 # pylint: disable=unused-import
 from joblib import Parallel, delayed
 
-from src.config import (create_clean_dir, get_out_path, load_config,
-                        set_global_seed)
+from src.config import create_clean_dir, get_out_path, load_config
 from src.data import generate_randombn
 from src.learning import estimate_bns
 
@@ -15,7 +14,6 @@ def main():
     # Init configs
     config = load_config("cn_privacy")
     out_path = get_out_path(config)
-    set_global_seed(config["seed"])
     num_cores = eval(config["num_cores"])
 
     # Generate BNs and data

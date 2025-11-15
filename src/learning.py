@@ -1,7 +1,7 @@
 import pandas as pd
 import pyagrum as gum
 
-from src.config import get_out_path, safe_assert
+from src.config import get_out_path, safe_assert, set_seed
 
 
 # Learn BN parameters from a given BN and data
@@ -21,6 +21,9 @@ def estimate_bns(exp, config) -> None:
 
     # Get output path
     out_path = get_out_path(config)
+
+    # Set seed
+    set_seed()
 
     # Read data
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')

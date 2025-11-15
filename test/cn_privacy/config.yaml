@@ -35,5 +35,4 @@ delta: 0.3                                          # Size of random interval fo
 n_bns: 5                                            # Number of BNs to sample within the CN
 
 # Other
-seed: 42                                            # Global seed
 num_cores: 'multiprocessing.cpu_count() - 1'        # Number of threads to use for parallelization

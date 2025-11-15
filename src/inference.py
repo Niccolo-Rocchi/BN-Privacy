@@ -7,7 +7,7 @@ import pyagrum as gum
 from more_itertools import random_product
 
 import src.defense
-from src.config import get_out_path, safe_assert, set_global_seed
+from src.config import get_out_path, safe_assert, set_seed
 from src.defense import noisy_bn
 from src.learning import learn_bn_params
 from src.utils import get_min_max_bns
@@ -15,15 +15,17 @@ from src.utils import get_min_max_bns
 
 def inferences(exp, config):
 
+    # Read config
     out_path = get_out_path(config)
     target = config["target_var"]
     def_mec = config["def_mec"]
 
+    # Read data
     auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
     eps = auc_meta.loc[auc_meta["exp"] == exp, "eps"].values[0]
 
     # Set seed
-    set_global_seed(config["seed"])
+    set_seed()
 
     # Set list of evidence
     evid_vec = [
@@ -180,6 +182,9 @@ def run_inference_bn(bn, target: str, evid_vec):
     cov = sorted(list(bn.names()))
     cov.remove(target)
 
+    # Set seed
+    set_seed()
+
     # Debug
     safe_assert(len(cov) == bn.size() - 1)
 
@@ -212,6 +217,9 @@ def run_inference_cn(cn, target: str, evid_vec, exp: str):
     bn_min, bn_max = get_min_max_bns(cn, exp)
     cov = sorted(list(bn_min.names()))
     cov.remove(target)
+
+    # Set seed
+    set_seed()
 
     # Debug
     safe_assert(len(cov) == bn_min.size() - 1)

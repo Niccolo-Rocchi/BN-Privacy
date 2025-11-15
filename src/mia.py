@@ -6,7 +6,7 @@ import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
 
-from src.config import get_out_path
+from src.config import get_out_path, set_seed
 from src.defense import noisy_bn
 
 
@@ -21,6 +21,9 @@ def mia_vs_bn(exp, config) -> None:
 
     # Read data
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+
+    # Set seed
+    set_seed()
 
     # For each data sample ...
     for sample in range(config["samples"]):
@@ -74,6 +77,9 @@ def mia_vs_cn(exp, config, save_res=True) -> dict:
 
     # Read data
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+
+    # Set seed
+    set_seed()
 
     # For each data sample ...
     auc_cns = []
@@ -139,6 +145,9 @@ def theoretical_power(exp, config) -> None:
     bn = gum.loadBN(f'{get_out_path(config) / config["bns_path"]}/gt/{exp}.bif')
     results = pd.read_csv(f'{out_path}/{config["results_path"]}/bns/bn_{exp}.csv')
 
+    # Set seed
+    set_seed()
+
     # Compute bound
     bound = math.sqrt(bn.dim() / int(config["gpop_ss"] * config["pool_prop"]))
 
@@ -167,6 +176,9 @@ def find_epsilon(exp, config) -> dict:
     auc_meta = pd.read_csv(f'{out_path}/{config["auc_meta"]}')
     auc_cn = auc_meta.loc[auc_meta["exp"] == exp, "auc_cn"].values[0]
     eps_vec = eval(config["eps_vec"])
+
+    # Set seed
+    set_seed()
 
     eps_best = eps_vec[-1]
 

@@ -4,18 +4,21 @@ import numpy as np
 import pandas as pd
 import pyagrum as gum
 
-from src.config import get_out_path, safe_assert
+from src.config import get_out_path, safe_assert, set_seed
 from src.utils import add_counts_to_bn, check_consistency
 
 
 # Apply defense mechanism to a BN, namely, derive a CN from a BN
-def defense_mechanism(def_mec, exp, config) -> None:
+def defense_mechanism(exp, config, def_mec, def_args) -> None:
 
     # Get output path
     out_path = get_out_path(config)
 
     # Read data
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
+
+    # Set seed
+    set_seed()
 
     # For each data sample ...
     for sample in range(config["samples"]):
@@ -35,13 +38,13 @@ def defense_mechanism(def_mec, exp, config) -> None:
             k: v
             for k, v in {
                 "bn": bn,
-                "ess": config["ess"],
-                "delta": config["delta"],
+                "ess": def_args.get("ess", None),
+                "delta": def_args.get("delta", None),
                 "data": pool,
             }.items()
             if k in sig.parameters
         }
-        cn = def_mec_fn(**args)  # Keep only `def_mec`` args
+        cn = def_mec_fn(**args)  # Keep only `def_mec` args
         base_path = out_path / config["cns_path"]
         cn.saveBNsMinMax(
             f"{base_path}/bn_min_{exp}_sample{sample}.bif",

@@ -1,21 +1,22 @@
+import ast
 from itertools import product
 
 import numpy as np
 import pyagrum as gum
 from numpy.random import randint
 
-from src.config import get_out_path, safe_assert, set_global_seed
+from src.config import get_out_path, safe_assert, set_seed
 
 
 def generate_naivebayes(config):
-
-    # Set seed
-    set_global_seed(config["seed"])
 
     # Set paths
     out_path = get_out_path(config)
     bns_path = out_path / config["bns_path"]
     data_path = out_path / config["data_path"]
+
+    # Set seed
+    set_seed()
 
     # Retrieve hyperparameters
     n_modmax = config["n_modmax"]
@@ -55,7 +56,7 @@ def generate_naivebayes(config):
             shuffled_idx = np.random.permutation(gpop.index)
 
             pool_idx = shuffled_idx[:pool_ss]
-            rpop_idx = shuffled_idx[pool_ss: pool_ss + rpop_ss]
+            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
 
             gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
             gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)
@@ -72,20 +73,20 @@ def generate_naivebayes(config):
 
 def generate_randombn(config):
 
-    # Set seed
-    set_global_seed(config["seed"])
-
     # Set paths
     out_path = get_out_path(config)
     bns_path = out_path / config["bns_path"]
     data_path = out_path / config["data_path"]
 
     # Retrieve hyperparameters
-    n_nodes_vec = eval(config["n_nodes_vec"])
-    edge_ratio_vec = eval(config["edge_ratio_vec"])
+    n_nodes_vec = ast.literal_eval(config["n_nodes_vec"])
+    edge_ratio_vec = ast.literal_eval(config["edge_ratio_vec"])
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
     rpop_ss = int(gpop_ss * config["rpop_prop"])
+
+    # Set seed
+    set_seed()
 
     # For each configuration ...
     for i, (n, r) in enumerate(product(n_nodes_vec, edge_ratio_vec)):
@@ -113,7 +114,7 @@ def generate_randombn(config):
             shuffled_idx = np.random.permutation(gpop.index)
 
             pool_idx = shuffled_idx[:pool_ss]
-            rpop_idx = shuffled_idx[pool_ss: pool_ss + rpop_ss]
+            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
 
             gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
             gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)

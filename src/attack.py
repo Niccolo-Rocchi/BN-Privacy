@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 import pyagrum as gum
 
-from src.config import get_out_path
+from src.config import get_out_path, set_seed
 from src.mia import get_ll
 from src.utils import sample_from_cn
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
-def attack_mechanism(atk_mec, exp, config) -> None:
+def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
 
     # Get output path
     out_path = get_out_path(config)
@@ -18,6 +18,9 @@ def attack_mechanism(atk_mec, exp, config) -> None:
     # Read data
     gpop = pd.read_csv(f'{out_path / config["data_path"]}/{exp}.csv')
     base_path = out_path / config["cns_path"]
+
+    # Set seed
+    set_seed()
 
     # For each data sample ...
     for sample in range(config["samples"]):
@@ -38,7 +41,7 @@ def attack_mechanism(atk_mec, exp, config) -> None:
                 "bn_min": bn_min,
                 "bn_max": bn_max,
                 "data": rpop,
-                "n_bns": config["n_bns"],
+                "n_bns": atk_args.get("n_bns", None),
             }.items()
             if k in sig.parameters
         }
