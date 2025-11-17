@@ -1,43 +1,62 @@
-version: "3.9"
-
-# cn_privacy paths
-x-cn_privacy_bns: &cn_privacy_bns ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
-x-cn_privacy_data: &cn_privacy_data ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
-
-# cn_vs_noisybn paths
-x-cn_vs_noisybn_bns: &cn_vs_noisybn_bns ./experiments/cn_vs_noisybn/bns:/workspace/experiments/cn_vs_noisybn/bns
-x-cn_vs_noisybn_data: &cn_vs_noisybn_data ./experiments/cn_vs_noisybn/data:/workspace/experiments/cn_vs_noisybn/data
-
+version: '3.9'
 services:
-  cn_privacy_def_ran_atk_mle: 
-    image: bnp:2025
+  cn_privacy_def_idm_atk_mle_ess1:
     build: .
-    volumes:
-      - *cn_privacy_bns
-      - *cn_privacy_data
-      - ./experiments/cn_privacy/output_def_ran_atk_mle:/workspace/experiments/cn_privacy/output
-    command: [python, -m, experiments.cn_privacy.exp, 
-                def_mec=def_ran, delta=0.6,
-                atk_mec=atk_mle, n_bns=5]
-
-  cn_privacy_def_idm_atk_mle: 
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_idm
+    - ess=1
+    - atk_mec=atk_mle
+    - n_bns=5
     image: bnp:2025
-    build: .
     volumes:
-      - *cn_privacy_bns
-      - *cn_privacy_data
-      - ./experiments/cn_privacy/output_def_idm_atk_mle:/workspace/experiments/cn_privacy/output
-    command: [python, -m, experiments.cn_privacy.exp, 
-                def_mec=def_idm, ess=1,
-                atk_mec=atk_mle, n_bns=5]
-
-  cn_vs_noisybn_def_ran_atk_mle: 
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_idm_atk_mle_ess1:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_idm_atk_mle_ess2:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_idm
+    - ess=2
+    - atk_mec=atk_mle
+    - n_bns=5
     image: bnp:2025
-    build: .
     volumes:
-      - *cn_vs_noisybn_bns
-      - *cn_vs_noisybn_data
-      - ./experiments/cn_vs_noisybn/output_def_ran_atk_mle-prova:/workspace/experiments/cn_vs_noisybn/output
-    command: [python, -m, experiments.cn_vs_noisybn.exp, 
-                def_mec=def_ran, delta=0.6,
-                atk_mec=atk_mle, n_bns=5]
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_idm_atk_mle_ess2:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_ran_atk_mle_delta0.2:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_ran
+    - delta=0.2
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_ran_atk_mle_delta0.2:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_ran_atk_mle_delta0.4:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_ran
+    - delta=0.4
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_ran_atk_mle_delta0.4:/workspace/experiments/cn_privacy/output

@@ -24,9 +24,7 @@ def main():
     generate_naivebayes(config)
 
     # Init the vectors of experiments
-    exp_vec = [
-        f.stem for f in (cur_dir / config["data_path"]).iterdir() if f.is_file()
-    ]
+    exp_vec = [f.stem for f in (cur_dir / config["data_path"]).iterdir() if f.is_file()]
 
     # Estimate BNs from rpop and pool
     print("#" * 5, "Estimate BNs from rpop and pool", "#" * 5)

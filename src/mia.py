@@ -163,6 +163,12 @@ def theoretical_power(exp, config) -> None:
     return
 
 
+def find_epsilon_new():
+    # TODO
+
+    return
+
+
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
 def find_epsilon(exp, config) -> dict:
 

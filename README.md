@@ -31,9 +31,9 @@ Implemented attacks:
 
 ### Using Docker (recommended)
 
-The `compose.yaml` file contains a set of pre-set experiments. Additional ones can also be specified.
+The `compose.yaml` file contains a set of pre-set experiments. Additional ones can also be specified. The `generate_compose.py` file helps in generating them automatically.
 
-Generate models and data for all experiments:
+Generate models and data for all experiments (controlled by `config.yaml`):
 
 ```bash
 python -m experiments.cn_privacy.generate
@@ -73,7 +73,7 @@ pip freeze > requirements.txt
 
 *Notice:* each of the following command will overwrite any related output. 
 
-Generate models and data:
+Generate models and data (controlled by `config.yaml`):
 
 ```bash
 python -m experiments.<name>.generate

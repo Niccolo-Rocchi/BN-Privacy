@@ -6,8 +6,7 @@ import numpy as np  # noqa: F401 # pylint: disable=unused-import
 from joblib import Parallel, delayed
 
 from src.attack import attack_mechanism
-from src.config import (create_clean_dir, get_cur_dir, load_config,
-                        map_sys_args)
+from src.config import create_clean_dir, get_cur_dir, load_config, map_sys_args
 from src.defense import defense_mechanism
 from src.mia import mia_vs_bn, mia_vs_cn, theoretical_power
 
@@ -23,9 +22,7 @@ def main():
     def_mec, def_args, atk_mec, atk_args = map_sys_args(sys.argv, config)
 
     # Init the vectors of experiments
-    exp_vec = [
-        f.stem for f in (cur_dir / config["data_path"]).iterdir() if f.is_file()
-    ]
+    exp_vec = [f.stem for f in (cur_dir / config["data_path"]).iterdir() if f.is_file()]
 
     # Defense mechanism
     print("#" * 5, "Defense mechanism", "#" * 5)
