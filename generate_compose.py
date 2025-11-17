@@ -2,8 +2,8 @@ import yaml
 from itertools import product
 
 # Set hyperparameters
-names = ["cn_privacy"]
-def_mecs = {"def_idm":{"ess":[1, 2]}, "def_ran":{"delta":[0.2, 0.4]}}
+names = ["cn_privacy", "cn_vs_noisybn"]
+def_mecs = {"def_idm":{"ess":[1, 2, 10]}, "def_ran":{"delta":[0.2, 0.4]}}
 atk_mecs = {"atk_mle":{"n_bns":[5]}}
 
 # Initialize the `compose.yaml` file
@@ -13,13 +13,12 @@ with open("compose.yaml", "w") as f:
 
 # For any configuration ...
 data = {"services": dict()}
-
 for name, def_mec, atk_mec in product(names, def_mecs.keys(), atk_mecs.keys()):
 
     def_params = def_mecs[def_mec]
     atk_params = atk_mecs[atk_mec]
 
-    # Assumption: each defense and attack has only 1 hyperparameter
+    # (assumption: each defense and attack mechanism has only 1 hyperparameter to be set)
     for def_par, atk_par in product(list(def_params.values())[0], list(atk_params.values())[0]):
 
         # ... set the related volume, ...

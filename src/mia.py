@@ -1,23 +1,27 @@
 import math
+import sys
 
 import numpy as np
 import pandas as pd
 import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
+from scipy.optimize import minimize
 
 from src.config import get_cur_dir, set_seed
 from src.defense import noisy_bn
 
 
 # MIA attack vs a BN
-def mia_vs_bn(exp, config) -> None:
+def mia_vs_bn(exp, config) -> dict:
 
-    # Get output path
+    # Get current directory
     cur_dir = get_cur_dir(config)
 
     # Init results
-    results = pd.DataFrame({"error": eval(config["error"])})
+    power_res = pd.DataFrame({"error": eval(config["error"])})
+    auc_res = pd.DataFrame({"sample": range(config["samples"])})
+    auc_res["exp"] = exp
 
     # Read data
     gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
@@ -26,6 +30,7 @@ def mia_vs_bn(exp, config) -> None:
     set_seed()
 
     # For each data sample ...
+    auc_bns_dict = dict()
     for sample in range(config["samples"]):
 
         # ... read the BNs as estimated from rpop and pool, ...
@@ -45,7 +50,7 @@ def mia_vs_bn(exp, config) -> None:
         # try:
 
         # ... and perform membership inference on gpop
-        power_vec, _ = run_mia(
+        power_vec, auc = run_mia(
             bn_theta_hat_ie,
             bn_theta_ie,
             rpop,
@@ -53,7 +58,8 @@ def mia_vs_bn(exp, config) -> None:
             gpop[f"in-pool-{sample}"],
             eval(config["error"]),
         )
-        results[f"power_BN_sample{sample}"] = power_vec
+        power_res[f"power_BN_sample{sample}"] = power_vec
+        auc_bns_dict[sample] = auc
 
         # except Exception:
 
@@ -63,17 +69,24 @@ def mia_vs_bn(exp, config) -> None:
         #         log.write(traceback.format_exc())
 
     # Save results
-    results.to_csv(f'{cur_dir}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
+    power_res.to_csv(f'{cur_dir}/{config["results_path"]}/bns/power_bn_{exp}.csv', index=False)
+    
+    # Return
+    auc_res["auc_bn"] = auc_res.apply(lambda row: auc_bns_dict[row["sample"]], axis=1)
+
+    return auc_res
 
 
 # MIA attack vs a CN
-def mia_vs_cn(exp, config, save_res=True) -> dict:
+def mia_vs_cn(exp, config, save_power_res=True) -> pd.DataFrame:
 
-    # Get output path
+    # Get current directory
     cur_dir = get_cur_dir(config)
 
     # Init results
-    results = pd.DataFrame({"error": eval(config["error"])})
+    power_res = pd.DataFrame({"error": eval(config["error"])})
+    auc_res = pd.DataFrame({"sample": range(config["samples"])})
+    auc_res["exp"] = exp
 
     # Read data
     gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
@@ -82,7 +95,7 @@ def mia_vs_cn(exp, config, save_res=True) -> dict:
     set_seed()
 
     # For each data sample ...
-    auc_cns = []
+    auc_cns_dict = dict()
     for sample in range(config["samples"]):
 
         # ... read the BN as inferred from the CN
@@ -112,8 +125,8 @@ def mia_vs_cn(exp, config, save_res=True) -> dict:
             gpop[f"in-pool-{sample}"],
             eval(config["error"]),
         )
-        results[f"power_CN_sample{sample}"] = power_vec
-        auc_cns.append(auc)
+        power_res[f"power_CN_sample{sample}"] = power_vec
+        auc_cns_dict[sample] = auc
 
         # except Exception:
 
@@ -122,23 +135,23 @@ def mia_vs_cn(exp, config, save_res=True) -> dict:
         #         log.write(f"{exp}: error with sample {sample} (BN).\n")
         #         log.write(traceback.format_exc())
 
-    # Compute Avg(AUC(CN)) across data samples
-    auc_cn = sum(auc_cns) / len(auc_cns)
-
     # Save results
-    if save_res:
-        results.to_csv(
-            f'{cur_dir}/{config["results_path"]}/cns/cn_{exp}.csv',
+    if save_power_res:
+        power_res.to_csv(
+            f'{cur_dir}/{config["results_path"]}/cns/power_cn_{exp}.csv',
             index=False,
         )
 
-    return {"exp": exp, "auc_cn": auc_cn}
+    # Return
+    auc_res["auc_cn"] = auc_res.apply(lambda row: auc_cns_dict[row["sample"]], axis=1)
+
+    return auc_res
 
 
 # Get theoretical power
 def theoretical_power(exp, config) -> None:
 
-    # Get output path
+    # Get current directory
     cur_dir = get_cur_dir(config)
 
     # Read data
@@ -162,51 +175,49 @@ def theoretical_power(exp, config) -> None:
 
     return
 
-
-def find_epsilon_new():
-    # TODO
-
-    return
-
-
 # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
 def find_epsilon(exp, config) -> dict:
 
-    # Get output path
+    # Get current directory
     cur_dir = get_cur_dir(config)
 
     # Read data
     gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
     gpop_ss = config["gpop_ss"]
     pool_ss = int(gpop_ss * config["pool_prop"])
-    auc_meta = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
-    auc_cn = auc_meta.loc[auc_meta["exp"] == exp, "auc_cn"].values[0]
+    auc_res = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
+    auc_res = auc_res[auc_res["exp"] == exp]
     eps_vec = eval(config["eps_vec"])
 
     # Set seed
     set_seed()
 
-    eps_best = eps_vec[-1]
+    # For each data sample ...
+    eps_dict = dict()
+    auc_noisy_dict = dict()
+    for sample in range(config["samples"]):
 
-    # For each eps ...
-    for eps in eps_vec:
+        # ... read the BNs as estimated from rpop and pool, ...
+        bn_theta = gum.loadBN(
+            f"{cur_dir}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
+        )
+        bn_theta_hat = gum.loadBN(
+            f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
+        )
 
-        # Init results
-        results = pd.DataFrame({"error": eval(config["error"])})
+        # ... retrieve rpop, ...
+        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
 
-        auc_noisy_bns = []
+        # ... get CN AUC, ...
+        auc_cn = auc_res.loc[auc_res["sample"] == sample, "auc_cn"].values[0]
 
-        # ... and for each data sample ...
-        for sample in range(config["samples"]):
+        # ... init results, ...
+        eps_dict[sample] = eps_vec[-1]
+        auc_noisy_dict[sample] = None
 
-            # ... read the BNs as estimated from rpop and pool, ...
-            bn_theta = gum.loadBN(
-                f"{cur_dir}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
-            )
-            bn_theta_hat = gum.loadBN(
-                f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
-            )
-
+        # ... and find epsilon
+        for eps in eps_vec:
+                
             # Get noisy BN
             scale = (2 * bn_theta_hat.size()) / (pool_ss * eps)
             bn_noisy = noisy_bn(bn_theta_hat, scale)
@@ -214,13 +225,8 @@ def find_epsilon(exp, config) -> dict:
             bn_noisy_ie = gum.LazyPropagation(bn_noisy)
             bn_theta_ie = gum.LazyPropagation(bn_theta)
 
-            # ... retrieve rpop, ...
-            rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
-
-            # try:
-
-            # ... and perform membership inference on gpop
-            power_vec, auc = run_mia(
+            # Perform membership inference on gpop
+            _, auc = run_mia(
                 bn_noisy_ie,
                 bn_theta_ie,
                 rpop,
@@ -228,42 +234,18 @@ def find_epsilon(exp, config) -> dict:
                 gpop[f"in-pool-{sample}"],
                 eval(config["error"]),
             )
-            results[f"power_noisyBN_sample{sample}"] = power_vec
-            auc_noisy_bns.append(auc)
 
-            # except Exception:
+            # Condition on |AUC(eps) - AUC(CN)|
+            if abs(auc_cn - auc) < config["tol"]:
+                eps_dict[sample] = eps
+                auc_noisy_dict[sample] = auc
+                break
+ 
+    # Return
+    auc_res["epsilon"] = auc_res.apply(lambda row: eps_dict[row["sample"]], axis=1)
+    auc_res["auc_noisy_bn"] = auc_res.apply(lambda row: auc_noisy_dict[row["sample"]], axis=1)
 
-            #     # Debug
-            #     with open(f"{results_path}/log.txt", "a") as log:
-            #         log.write(f"{exp}: error with sample {sample} (BN).\n")
-            #         log.write(traceback.format_exc())
-
-        # Compute Avg(AUC(eps)) across data samples
-        auc_noisy_bn = sum(auc_noisy_bns) / config["samples"]
-
-        # Condition on |AUC(eps) - AUC(CN)|
-        if abs(auc_cn - auc_noisy_bn) <= config["tol"]:
-            eps_best = eps
-            break
-
-    # Save noisy BNs
-    for sample in range(config["samples"]):
-        bn_theta_hat = gum.loadBN(
-            f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
-        )
-        scale = (2 * bn_theta_hat.size()) / (pool_ss * eps_best)
-        bn_noisy = noisy_bn(bn_theta_hat, scale)
-        gum.saveBN(
-            bn_noisy,
-            f'{cur_dir / config["noisy_path"]}/{f"bn_{exp}_sample{sample}"}.bif',
-        )
-
-    return {
-        "exp": exp,
-        "auc_cn": auc_cn,
-        "auc_noisy_bn": auc_noisy_bn,
-        "eps": eps_best,
-    }
+    return auc_res
 
 
 # MIA: membership inference attack

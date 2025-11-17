@@ -19,7 +19,7 @@ def learn_bn_params(bn, data):
 # Estimate BNs from rpop and pool
 def estimate_bns(exp, config) -> None:
 
-    # Get output path
+    # Get current directory
     cur_dir = get_cur_dir(config)
 
     # Set seed

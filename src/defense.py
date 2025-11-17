@@ -11,7 +11,7 @@ from src.utils import add_counts_to_bn, check_consistency
 # Apply defense mechanism to a BN, namely, derive a CN from a BN
 def defense_mechanism(exp, config, def_mec, def_args) -> None:
 
-    # Get output path
+    # Get current directory
     cur_dir = get_cur_dir(config)
 
     # Read data

@@ -18,8 +18,6 @@ def main():
     # Init configs
     config = load_config("cn_vs_noisybn")
     cur_dir = get_cur_dir(config)
-    def_mec = config["def_mec"]
-    atk_mec = config["atk_mec"]
     num_cores = eval(config["num_cores"])
 
     # Get command-line hyperparameters
@@ -45,10 +43,10 @@ def main():
     # MIA vs CN
     print("#" * 5, "MIA vs CN", "#" * 5)
     res = Parallel(n_jobs=num_cores)(
-        delayed(mia_vs_cn)(exp, config, save_res=False) for exp in exp_vec
+        delayed(mia_vs_cn)(exp, config, save_power_res=False) for exp in exp_vec
     )
-    res = pd.DataFrame(res)
-    res.to_csv(f'{cur_dir}/{config["auc_meta"]}', index=False)
+    auc_res = pd.concat((i for i in res), axis=0)
+    auc_res.to_csv(f'{cur_dir}/{config["auc_meta"]}', index=False)
 
     # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
     print("#" * 5, "Get epsilon", "#" * 5)
@@ -56,8 +54,8 @@ def main():
     res = Parallel(n_jobs=num_cores)(
         delayed(find_epsilon)(exp, config) for exp in exp_vec
     )
-    res = pd.DataFrame(res)
-    res.to_csv(f'{cur_dir}/{config["auc_meta"]}', index=False)
+    auc_res = pd.concat((i for i in res), axis=0)
+    auc_res.to_csv(f'{cur_dir}/{config["auc_meta"]}', index=False)
 
     # Run inferences
     print("#" * 5, "Run inferences", "#" * 5)

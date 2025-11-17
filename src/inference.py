@@ -21,8 +21,8 @@ def inferences(exp, config):
     def_mec = config["def_mec"]
 
     # Read data
-    auc_meta = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
-    eps = auc_meta.loc[auc_meta["exp"] == exp, "eps"].values[0]
+    auc_res = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
+    eps = np.mean(auc_res.loc[auc_res["exp"] == exp, "epsilon"].values[0])
 
     # Set seed
     set_seed()

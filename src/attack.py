@@ -12,7 +12,7 @@ from src.utils import sample_from_cn
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
 def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
 
-    # Get output path
+    # Get current directory
     cur_dir = get_cur_dir(config)
 
     # Read data

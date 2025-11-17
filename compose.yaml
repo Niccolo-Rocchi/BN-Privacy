@@ -15,6 +15,21 @@ services:
     - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
     - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
     - ./experiments/cn_privacy/output_def_idm_atk_mle_ess1:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_idm_atk_mle_ess10:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_idm
+    - ess=10
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_idm_atk_mle_ess10:/workspace/experiments/cn_privacy/output
   cn_privacy_def_idm_atk_mle_ess2:
     build: .
     command:
@@ -60,3 +75,78 @@ services:
     - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
     - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
     - ./experiments/cn_privacy/output_def_ran_atk_mle_delta0.4:/workspace/experiments/cn_privacy/output
+  cn_vs_noisybn_def_idm_atk_mle_ess1:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_vs_noisybn.exp
+    - def_mec=def_idm
+    - ess=1
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_vs_noisybn/bns:/workspace/experiments/cn_vs_noisybn/bns
+    - ./experiments/cn_vs_noisybn/data:/workspace/experiments/cn_vs_noisybn/data
+    - ./experiments/cn_vs_noisybn/output_def_idm_atk_mle_ess1:/workspace/experiments/cn_vs_noisybn/output
+  cn_vs_noisybn_def_idm_atk_mle_ess10:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_vs_noisybn.exp
+    - def_mec=def_idm
+    - ess=10
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_vs_noisybn/bns:/workspace/experiments/cn_vs_noisybn/bns
+    - ./experiments/cn_vs_noisybn/data:/workspace/experiments/cn_vs_noisybn/data
+    - ./experiments/cn_vs_noisybn/output_def_idm_atk_mle_ess10:/workspace/experiments/cn_vs_noisybn/output
+  cn_vs_noisybn_def_idm_atk_mle_ess2:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_vs_noisybn.exp
+    - def_mec=def_idm
+    - ess=2
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_vs_noisybn/bns:/workspace/experiments/cn_vs_noisybn/bns
+    - ./experiments/cn_vs_noisybn/data:/workspace/experiments/cn_vs_noisybn/data
+    - ./experiments/cn_vs_noisybn/output_def_idm_atk_mle_ess2:/workspace/experiments/cn_vs_noisybn/output
+  cn_vs_noisybn_def_ran_atk_mle_delta0.2:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_vs_noisybn.exp
+    - def_mec=def_ran
+    - delta=0.2
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_vs_noisybn/bns:/workspace/experiments/cn_vs_noisybn/bns
+    - ./experiments/cn_vs_noisybn/data:/workspace/experiments/cn_vs_noisybn/data
+    - ./experiments/cn_vs_noisybn/output_def_ran_atk_mle_delta0.2:/workspace/experiments/cn_vs_noisybn/output
+  cn_vs_noisybn_def_ran_atk_mle_delta0.4:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_vs_noisybn.exp
+    - def_mec=def_ran
+    - delta=0.4
+    - atk_mec=atk_mle
+    - n_bns=5
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_vs_noisybn/bns:/workspace/experiments/cn_vs_noisybn/bns
+    - ./experiments/cn_vs_noisybn/data:/workspace/experiments/cn_vs_noisybn/data
+    - ./experiments/cn_vs_noisybn/output_def_ran_atk_mle_delta0.4:/workspace/experiments/cn_vs_noisybn/output
