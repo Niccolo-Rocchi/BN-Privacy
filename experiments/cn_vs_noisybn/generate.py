@@ -17,7 +17,7 @@ def main():
     num_cores = eval(config["num_cores"])
 
     # Generate BNs and data
-    print("#" * 5, "Generate BNs and data", "#" * 5)
+    print("## Generate BNs and data ##")
     create_clean_dir(cur_dir / config["bns_path"])
     create_clean_dir(cur_dir / config["bns_path"] / "gt")
     create_clean_dir(cur_dir / config["data_path"])
@@ -28,7 +28,7 @@ def main():
     exp_vec = [f.stem for f in (cur_dir / config["data_path"]).iterdir() if f.is_file()]
 
     # Estimate BNs from rpop and pool
-    print("#" * 5, "Estimate BNs from rpop and pool", "#" * 5)
+    print("## Estimate BNs from rpop and pool ##")
     create_clean_dir(cur_dir / config["bns_path"] / "rpop")
     create_clean_dir(cur_dir / config["bns_path"] / "pool")
     _ = Parallel(n_jobs=num_cores)(

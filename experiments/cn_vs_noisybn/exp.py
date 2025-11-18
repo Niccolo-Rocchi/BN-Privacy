@@ -28,21 +28,21 @@ def main():
     exp_vec = [f.stem for f in (cur_dir / config["data_path"]).iterdir() if f.is_file()]
 
     # Defense mechanism
-    print("#" * 5, "Defense mechanism", "#" * 5)
+    print("## Defense mechanism: [", def_mec, def_args, "] ##", flush=True)
     create_clean_dir(cur_dir / config["cns_path"])
     _ = Parallel(n_jobs=num_cores)(
         delayed(defense_mechanism)(exp, config, def_mec, def_args) for exp in exp_vec
     )
 
     # Attack mechanism
-    print("#" * 5, "Attack mechanism", "#" * 5)
+    print("## Attack mechanism: [", atk_mec, atk_args, "] ##", flush=True)
     create_clean_dir(cur_dir / config["atk_path"])
     _ = Parallel(n_jobs=num_cores)(
         delayed(attack_mechanism)(exp, config, atk_mec, atk_args) for exp in exp_vec
     )
 
     # MIA vs CN
-    print("#" * 5, "MIA vs CN", "#" * 5)
+    print("## MIA vs CN ##", flush=True)
     create_clean_dir(cur_dir / config["results_path"] / "cns")
     res = Parallel(n_jobs=num_cores)(
         delayed(mia_vs_cn)(exp, config) for exp in exp_vec
@@ -51,7 +51,7 @@ def main():
     auc_res.to_csv(f'{cur_dir}/{config["auc_meta"]}', index=False)
 
     # Find eps s.t. |AUC(eps) - AUC(CN)| < tol
-    print("#" * 5, "Get epsilon", "#" * 5)
+    print("## Find epsilon ##", flush=True)
     create_clean_dir(cur_dir / config["results_path"] / "bn_noisy")
     res = Parallel(n_jobs=num_cores)(
         delayed(find_epsilon)(exp, config) for exp in exp_vec
@@ -60,7 +60,7 @@ def main():
     auc_res.to_csv(f'{cur_dir}/{config["auc_meta"]}', index=False)
 
     # Run inferences
-    print("#" * 5, "Run inferences", "#" * 5)
+    print("## Inferences ##", flush=True)
     create_clean_dir(cur_dir / config["results_path"] / "inferences")
     _ = Parallel(n_jobs=num_cores)(delayed(inferences)(exp, config, def_mec, def_args) for exp in exp_vec)
 

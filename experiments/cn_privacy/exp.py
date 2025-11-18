@@ -26,31 +26,31 @@ def main():
     exp_vec = [f.stem for f in (cur_dir / config["data_path"]).iterdir() if f.is_file()]
 
     # Defense mechanism
-    print("#" * 5, "Defense mechanism", "#" * 5)
+    print("## Defense mechanism: [", def_mec, def_args, "] ##", flush=True)
     create_clean_dir(cur_dir / config["cns_path"])
     _ = Parallel(n_jobs=num_cores)(
         delayed(defense_mechanism)(exp, config, def_mec, def_args) for exp in exp_vec
     )
 
     # Attack mechanism
-    print("#" * 5, "Attack mechanism", "#" * 5)
+    print("## Attack mechanism: [", atk_mec, atk_args, "] ##", flush=True)
     create_clean_dir(cur_dir / config["atk_path"])
     _ = Parallel(n_jobs=num_cores)(
         delayed(attack_mechanism)(exp, config, atk_mec, atk_args) for exp in exp_vec
     )
 
     # MIA vs CN
-    print("#" * 5, "MIA vs CN", "#" * 5)
+    print("## MIA vs CN ##", flush=True)
     create_clean_dir(cur_dir / config["results_path"] / "cns")
     _ = Parallel(n_jobs=num_cores)(delayed(mia_vs_cn)(exp, config) for exp in exp_vec)
 
     # MIA vs BN
-    print("#" * 5, "MIA vs BN", "#" * 5)
+    print("## MIA vs BN ##", flush=True)
     create_clean_dir(cur_dir / config["results_path"] / "bns")
     _ = Parallel(n_jobs=num_cores)(delayed(mia_vs_bn)(exp, config) for exp in exp_vec)
 
     # Compute theoretical power
-    print("#" * 5, "Compute theoretical power", "#" * 5)
+    print("## Compute theoretical power ##", flush=True)
     _ = Parallel(n_jobs=num_cores)(
         delayed(theoretical_power)(exp, config) for exp in exp_vec
     )
