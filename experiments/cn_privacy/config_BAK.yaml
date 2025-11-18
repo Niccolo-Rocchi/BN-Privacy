@@ -1,7 +1,7 @@
 ## Configuration file
 
 # Paths
-# Paths
+
 cur_dir: experiments/cn_privacy                     # Current directory (contains all the following)
 bns_path: bns                                       # Where to save ground-truth BNs
 cns_path: output/cns                                # Where to save CNs as obtained by def-mec from BNs learnt from pool

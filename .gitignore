@@ -2,6 +2,7 @@ venv
 output*
 bns
 data
+plots
 *meta.txt
 bin
 __pycache__

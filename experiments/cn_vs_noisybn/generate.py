@@ -18,9 +18,10 @@ def main():
 
     # Generate BNs and data
     print("#" * 5, "Generate BNs and data", "#" * 5)
+    create_clean_dir(cur_dir / config["bns_path"])
     create_clean_dir(cur_dir / config["bns_path"] / "gt")
     create_clean_dir(cur_dir / config["data_path"])
-    open(f'{cur_dir}/{config["exp_meta"]}', "a").close()
+    open(f'{cur_dir}/{config["exp_meta"]}', "w").close()
     generate_naivebayes(config)
 
     # Init the vectors of experiments

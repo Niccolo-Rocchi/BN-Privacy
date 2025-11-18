@@ -16,6 +16,7 @@ def main():
     # Init configs
     config = load_config("cn_privacy")
     cur_dir = get_cur_dir(config)
+    create_clean_dir(cur_dir / "output")
     num_cores = eval(config["num_cores"])
 
     # Get command-line hyperparameters

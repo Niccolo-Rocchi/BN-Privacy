@@ -13,16 +13,16 @@ from src.learning import learn_bn_params
 from src.utils import get_min_max_bns
 
 
-def inferences(exp, config):
+def inferences(exp, config, def_mec, def_args):
 
     # Read config
     cur_dir = get_cur_dir(config)
     target = config["target_var"]
-    def_mec = config["def_mec"]
 
     # Read data
     auc_res = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
-    eps = np.mean(auc_res.loc[auc_res["exp"] == exp, "epsilon"].values[0])
+    eps_vec = [i for i in auc_res.loc[auc_res["exp"] == exp, "epsilon"].values if i is not None]
+    eps = np.mean(eps_vec)
 
     # Set seed
     set_seed()
@@ -41,14 +41,14 @@ def inferences(exp, config):
     bn = learn_bn_params(gt, gpop)
 
     # Learn CN from gpop (defense mechanism)        #TODO: save results
-    def_mec_fn = getattr(src.defense, def_mec)  # Get the related function
-    sig = inspect.signature(def_mec_fn)  # Get its signature
+    def_mec_fn = getattr(src.defense, def_mec)      # Get the related function
+    sig = inspect.signature(def_mec_fn)             # Get its signature
     args = {
         k: v
         for k, v in {
             "bn": bn,
-            "ess": config["ess"],
-            "delta": config["delta"],
+            "ess": def_args.get("ess", None),
+            "delta": def_args.get("delta", None),
             "data": gpop,
         }.items()
         if k in sig.parameters

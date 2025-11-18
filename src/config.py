@@ -80,7 +80,7 @@ def create_clean_dir(path: Path):
     path.mkdir(parents=True, exist_ok=True)
 
 
-# Get current directory
+# Get output path
 def get_cur_dir(config):
 
     root_path = get_root_path()

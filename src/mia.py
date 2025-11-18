@@ -78,7 +78,7 @@ def mia_vs_bn(exp, config) -> dict:
 
 
 # MIA attack vs a CN
-def mia_vs_cn(exp, config, save_power_res=True) -> pd.DataFrame:
+def mia_vs_cn(exp, config) -> pd.DataFrame:
 
     # Get current directory
     cur_dir = get_cur_dir(config)
@@ -136,11 +136,9 @@ def mia_vs_cn(exp, config, save_power_res=True) -> pd.DataFrame:
         #         log.write(traceback.format_exc())
 
     # Save results
-    if save_power_res:
-        power_res.to_csv(
-            f'{cur_dir}/{config["results_path"]}/cns/power_cn_{exp}.csv',
-            index=False,
-        )
+    power_res.to_csv(
+        f'{cur_dir}/{config["results_path"]}/cns/power_cn_{exp}.csv',
+        index=False)
 
     # Return
     auc_res["auc_cn"] = auc_res.apply(lambda row: auc_cns_dict[row["sample"]], axis=1)
@@ -156,7 +154,7 @@ def theoretical_power(exp, config) -> None:
 
     # Read data
     bn = gum.loadBN(f'{get_cur_dir(config) / config["bns_path"]}/gt/{exp}.bif')
-    results = pd.read_csv(f'{cur_dir}/{config["results_path"]}/bns/bn_{exp}.csv')
+    results = pd.read_csv(f'{cur_dir}/{config["results_path"]}/bns/power_bn_{exp}.csv')
 
     # Set seed
     set_seed()
@@ -171,7 +169,7 @@ def theoretical_power(exp, config) -> None:
 
     # Save results
     results["power_bound"] = beta
-    results.to_csv(f'{cur_dir}/{config["results_path"]}/bns/bn_{exp}.csv', index=False)
+    results.to_csv(f'{cur_dir}/{config["results_path"]}/bns/power_bn_{exp}.csv', index=False)
 
     return
 
@@ -180,6 +178,9 @@ def find_epsilon(exp, config) -> dict:
 
     # Get current directory
     cur_dir = get_cur_dir(config)
+
+    # Init results
+    power_res = pd.DataFrame({"error": eval(config["error"])})
 
     # Read data
     gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
@@ -212,7 +213,7 @@ def find_epsilon(exp, config) -> dict:
         auc_cn = auc_res.loc[auc_res["sample"] == sample, "auc_cn"].values[0]
 
         # ... init results, ...
-        eps_dict[sample] = eps_vec[-1]
+        eps_dict[sample] = None
         auc_noisy_dict[sample] = None
 
         # ... and find epsilon
@@ -226,7 +227,7 @@ def find_epsilon(exp, config) -> dict:
             bn_theta_ie = gum.LazyPropagation(bn_theta)
 
             # Perform membership inference on gpop
-            _, auc = run_mia(
+            power_vec, auc = run_mia(
                 bn_noisy_ie,
                 bn_theta_ie,
                 rpop,
@@ -239,8 +240,14 @@ def find_epsilon(exp, config) -> dict:
             if abs(auc_cn - auc) < config["tol"]:
                 eps_dict[sample] = eps
                 auc_noisy_dict[sample] = auc
+                power_res[f"power_BN_noisy_sample{sample}"] = power_vec
                 break
  
+    # Save results
+    power_res.to_csv(
+        f'{cur_dir}/{config["results_path"]}/bn_noisy/power_bn_{exp}.csv',
+        index=False)
+    
     # Return
     auc_res["epsilon"] = auc_res.apply(lambda row: eps_dict[row["sample"]], axis=1)
     auc_res["auc_noisy_bn"] = auc_res.apply(lambda row: auc_noisy_dict[row["sample"]], axis=1)
