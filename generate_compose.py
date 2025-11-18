@@ -2,9 +2,9 @@ import yaml
 from itertools import product
 
 # Set hyperparameters
-names = ["cn_privacy", "cn_vs_noisybn"]
-def_mecs = {"def_idm":{"ess":[1, 2, 10]}, "def_ran":{"delta":[0.2, 0.4]}}
-atk_mecs = {"atk_mle":{"n_bns":[5]}}
+names = ["cn_vs_noisybn"]
+def_mecs = {"def_idm":{"ess":[1, 10, 30, 50]}}
+atk_mecs = {"atk_mle":{"n_bns":[50]}}
 
 # Initialize the `compose.yaml` file
 init = {"version": "3.9"}

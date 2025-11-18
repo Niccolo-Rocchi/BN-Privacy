@@ -48,6 +48,13 @@ docker compose up [service name]
 
 Results will be available under `experiments/<name>/output_*`.
 
+To check the status, run one or more of the following:
+
+```bash
+docker compose ps
+docker compose logs [service name]
+docker stats
+```
 
 ### Local computation
 

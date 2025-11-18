@@ -72,12 +72,14 @@ def set_seed():
 # Create an empty directory
 def create_clean_dir(path: Path):
 
-    # Remove the folder if already exists
+    # If directory exists, clean it
     if path.exists() and path.is_dir():
-        shutil.rmtree(path)
+        for item in path.iterdir():
+            shutil.rmtree(item) if item.is_dir() else item.unlink()
 
-    # Create a new folder
-    path.mkdir(parents=True, exist_ok=True)
+    # Else, create a new one
+    else:
+        path.mkdir(parents=True, exist_ok=True)
 
 
 # Get output path
