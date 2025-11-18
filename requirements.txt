@@ -59,6 +59,7 @@ ptyprocess==0.7.0
 pure_eval==0.2.3
 pyAgrum==2.2.0
 pyarrow==21.0.0
+pycddlib==3.0.2
 pycodestyle==2.14.0
 pydot==4.0.1
 pyflakes==3.4.0

@@ -6,7 +6,7 @@ import pyagrum as gum
 
 from src.config import get_cur_dir, set_seed
 from src.mia import get_ll
-from src.utils import sample_from_cn
+from src.utils import centroid_cn, sample_from_cn
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
@@ -51,6 +51,14 @@ def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
         )
 
     return
+
+
+# Get the centroid of a CN
+def atk_cen(bn_min, bn_max):
+
+    bn = centroid_cn(bn_min, bn_max)
+
+    return bn
 
 
 # Get the maximum likelihood BN inside a CN

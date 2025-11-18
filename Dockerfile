@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y \
     swig \ 
     libglpk-dev \
     python3-dev \ 
+    libcdd-dev \ 
+    libgmp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory

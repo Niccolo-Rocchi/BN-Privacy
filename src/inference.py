@@ -21,7 +21,9 @@ def inferences(exp, config, def_mec, def_args):
 
     # Read data
     auc_res = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
-    eps_vec = [i for i in auc_res.loc[auc_res["exp"] == exp, "epsilon"].values if i is not None]
+    eps_vec = [
+        i for i in auc_res.loc[auc_res["exp"] == exp, "epsilon"].values if i is not None
+    ]
     eps = np.mean(eps_vec)
 
     # Set seed
@@ -41,8 +43,8 @@ def inferences(exp, config, def_mec, def_args):
     bn = learn_bn_params(gt, gpop)
 
     # Learn CN from gpop (defense mechanism)        #TODO: save results
-    def_mec_fn = getattr(src.defense, def_mec)      # Get the related function
-    sig = inspect.signature(def_mec_fn)             # Get its signature
+    def_mec_fn = getattr(src.defense, def_mec)  # Get the related function
+    sig = inspect.signature(def_mec_fn)  # Get its signature
     args = {
         k: v
         for k, v in {

@@ -1,10 +1,11 @@
-import yaml
 from itertools import product
+
+import yaml
 
 # Set hyperparameters
 names = ["cn_vs_noisybn"]
-def_mecs = {"def_idm":{"ess":[1, 10, 30, 50]}}
-atk_mecs = {"atk_mle":{"n_bns":[50]}}
+def_mecs = {"def_idm": {"ess": [1, 10, 30, 50]}}
+atk_mecs = {"atk_mle": {"n_bns": [50]}}
 
 # Initialize the `compose.yaml` file
 init = {"version": "3.9"}
@@ -19,7 +20,9 @@ for name, def_mec, atk_mec in product(names, def_mecs.keys(), atk_mecs.keys()):
     atk_params = atk_mecs[atk_mec]
 
     # (assumption: each defense and attack mechanism has only 1 hyperparameter to be set)
-    for def_par, atk_par in product(list(def_params.values())[0], list(atk_params.values())[0]):
+    for def_par, atk_par in product(
+        list(def_params.values())[0], list(atk_params.values())[0]
+    ):
 
         # ... set the related volume, ...
         volumes = [
@@ -29,7 +32,9 @@ for name, def_mec, atk_mec in product(names, def_mecs.keys(), atk_mecs.keys()):
         ]
 
         # ... and create the experiment
-        data["services"][f"{name}_{def_mec}_{atk_mec}_{list(def_params.keys())[0]}{def_par}"] = {
+        data["services"][
+            f"{name}_{def_mec}_{atk_mec}_{list(def_params.keys())[0]}{def_par}"
+        ] = {
             "image": "bnp:2025",
             "build": ".",
             "volumes": volumes,
@@ -40,7 +45,8 @@ for name, def_mec, atk_mec in product(names, def_mecs.keys(), atk_mecs.keys()):
                 f"def_mec={def_mec}",
                 f"{list(def_params.keys())[0]}={def_par}",
                 f"atk_mec={atk_mec}",
-                f"{list(atk_params.keys())[0]}={atk_par}",            ],
+                f"{list(atk_params.keys())[0]}={atk_par}",
+            ],
         }
 
 # Write file

@@ -1,5 +1,6 @@
 from tempfile import TemporaryDirectory
 
+import cdd
 import hopsy
 import numpy as np
 import pyagrum as gum
@@ -26,6 +27,83 @@ def add_counts_to_bn(bn, data):
                 continue
 
         bn.cpt(node).fillWith(counts_array.flatten().tolist())
+
+
+# Get the centroid of a CN
+def centroid_cn(bn_min, bn_max) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get the centroid CPT, ...
+        cpt = centroid_cpt(bn_min.cpt(var), bn_max.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max))
+
+    return bn
+
+
+# Get the centroid of a CN CPT
+def centroid_cpt(cpt_min, cpt_max) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the centroid credal set, ...
+        c = centroid_cset(cpt_min[row, :], cpt_max[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the centroid of a credal set as the average of its extreme points
+def centroid_cset(vec_min, vec_max) -> np.array:
+
+    # Define the (in)equalities (i.e., get the H-representation of the credal set)
+    n_par = len(vec_min)
+    A = np.concatenate(
+        (-np.eye(n_par), np.eye(n_par), np.atleast_2d(np.ones(n_par))), axis=0
+    )
+    b = np.concatenate((vec_max, -vec_min, np.atleast_1d(-1))).reshape(len(A), 1)
+    bA = np.concatenate((b, A), axis=1)
+    mat = cdd.matrix_from_array(
+        array=bA, rep_type=cdd.RepType.INEQUALITY, lin_set=set([len(A) - 1])
+    )
+
+    # Get the polytope and extreme points. Each point is a row of the matrix `vertices`
+    poly = cdd.polyhedron_from_matrix(mat)
+    ext = cdd.copy_generators(poly)
+    vertices = np.array(ext.array)[:, 1:]
+
+    # Compute the centroid as the average across extreme points
+    centroid = np.sum(vertices, axis=0) / len(vertices)
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+    safe_assert(len(b) == 2 * len(vec_min) + 1)
+    safe_assert(A.shape == (len(b), len(vec_min)))
+    safe_assert(bA.shape == (2 * len(vec_min) + 1, len(vec_min) + 1))
+
+    return centroid
 
 
 # BNs sampler from a CN
@@ -104,20 +182,20 @@ def sample_from_cset(vec_min, vec_max, n_bns) -> list:
     We assume a credal set is a polytope in a space of #X parameters, defined by a:
      - Multi-dimensional rectangle, i.e., inequality constraint Ax <= b, and
      - Hyperplane (provided all the variables sum up to 1), i.e., equality constraint A_eq x = b_eq.
-    In the case of local IDM, this is ensured.
+    This is true if the CN has been learnt by local IDM, for instance.
     """
 
     # Define the rectangle
     n_par = len(vec_min)
-    A = np.concat((np.eye(n_par), -np.eye(n_par)), axis=0)
-    b = np.array(np.concatenate((vec_max, -vec_min)))
+    A = np.concatenate((np.eye(n_par), -np.eye(n_par)), axis=0)
+    b = np.concatenate((vec_max, -vec_min))
     rectangle = hopsy.Problem(A=A, b=b)
 
     # Define the hyperplane
     A_eq = np.array([np.ones(n_par)])
     b_eq = np.array([1.0])
 
-    # Define the polytope as a constrained rectangle
+    # Define the polytope as a constrained rectangle (i.e., get the H-representation of the credal set)
     constrained_rectangle = hopsy.add_equality_constraints(
         rectangle, A_eq=A_eq, b_eq=b_eq
     )

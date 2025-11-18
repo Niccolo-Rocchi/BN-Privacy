@@ -26,6 +26,7 @@ Implemented defenses:
 
 Implemented attacks:
 - `atk_mle`. Requires: `n_bns`
+- `atk_cen`
 
 ## Running code
 
@@ -70,6 +71,8 @@ Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+*Notice*: if some package is missing locally, see the `Dockerfile` for additional packages to be installed (names refer to Ubuntu/Debian).
 
 Upgrade dependencies: 
 
@@ -116,7 +119,7 @@ Lint code by running:
 
 ```bash
 flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv
-flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=venv
+flake8 . --count --exit-zero --max-complexity=10 --ignore=E203 --max-line-length=140 --statistics --exclude=venv
 ```
 
 Analyze code by running:

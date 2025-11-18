@@ -44,9 +44,7 @@ def main():
     # MIA vs CN
     print("## MIA vs CN ##", flush=True)
     create_clean_dir(cur_dir / config["results_path"] / "cns")
-    res = Parallel(n_jobs=num_cores)(
-        delayed(mia_vs_cn)(exp, config) for exp in exp_vec
-    )
+    res = Parallel(n_jobs=num_cores)(delayed(mia_vs_cn)(exp, config) for exp in exp_vec)
     auc_res = pd.concat((i for i in res), axis=0)
     auc_res.to_csv(f'{cur_dir}/{config["auc_meta"]}', index=False)
 
@@ -62,7 +60,9 @@ def main():
     # Run inferences
     print("## Inferences ##", flush=True)
     create_clean_dir(cur_dir / config["results_path"] / "inferences")
-    _ = Parallel(n_jobs=num_cores)(delayed(inferences)(exp, config, def_mec, def_args) for exp in exp_vec)
+    _ = Parallel(n_jobs=num_cores)(
+        delayed(inferences)(exp, config, def_mec, def_args) for exp in exp_vec
+    )
 
     # Clean
     gc.collect()
