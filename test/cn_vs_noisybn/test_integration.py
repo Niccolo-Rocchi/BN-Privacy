@@ -45,3 +45,20 @@ def test_def_idm_atk_cen(monkeypatch):
 
     # Run experiment
     exp.main()
+
+def test_def_ran_atk_ran(monkeypatch):
+
+    monkeypatch.setattr(
+        sys, "argv", ["def_mec=def_ran", "delta=0.3", "atk_mec=atk_ran"]
+    )
+
+    # Run experiment
+    exp.main()
+
+
+def test_def_idm_atk_ran(monkeypatch):
+
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_ran"])
+
+    # Run experiment
+    exp.main()

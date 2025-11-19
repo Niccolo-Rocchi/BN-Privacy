@@ -21,12 +21,13 @@ For additional details, we refer to the paper.
 Each experiment requires the user to specify one defense and one attack mechanisms, plus additional related hyperparameters. Below, the mechanisms and hyperparameters names are reported.
 
 Implemented defenses:
-- `def_idm`. Requires: `ess`
-- `def_ran`. Requires: `delta`
+- `def_idm`. Requires: `ess`.
+- `def_ran`. Requires: `delta`.
 
 Implemented attacks:
-- `atk_mle`. Requires: `n_bns`
-- `atk_cen`
+- `atk_mle`. Requires: `n_bns`.
+- `atk_cen`.
+- `atk_ran`.
 
 ## Running code
 

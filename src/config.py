@@ -39,7 +39,7 @@ def map_sys_args(sys_args, config) -> tuple:
     if atk_mec == "atk_mle":
         atk_args["n_bns"] = int(params.pop("n_bns"))
         assert atk_args["n_bns"] >= 1
-    elif atk_mec == "atk_cen":
+    elif atk_mec == "atk_cen" or atk_mec == "atk_ran":
         pass
     else:
         raise Exception("Attack not implemented")
