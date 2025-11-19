@@ -1,6 +1,8 @@
+from fractions import Fraction
 from tempfile import TemporaryDirectory
 
 import cdd
+import cdd.gmp
 import hopsy
 import numpy as np
 import pyagrum as gum
@@ -85,14 +87,18 @@ def centroid_cset(vec_min, vec_max) -> np.array:
     )
     b = np.concatenate((vec_max, -vec_min, np.atleast_1d(-1))).reshape(len(A), 1)
     bA = np.concatenate((b, A), axis=1)
-    mat = cdd.matrix_from_array(
-        array=bA, rep_type=cdd.RepType.INEQUALITY, lin_set=set([len(A) - 1])
+    bA_frac = np.array([[Fraction(x).limit_denominator() for x in row] 
+                     for row in bA], dtype=object)  # Needed for numerical stability
+    mat_frac = cdd.gmp.matrix_from_array(
+        array=bA_frac, rep_type=cdd.RepType.INEQUALITY, lin_set=set([len(A) - 1])
     )
 
     # Get the polytope and extreme points. Each point is a row of the matrix `vertices`
-    poly = cdd.polyhedron_from_matrix(mat)
-    ext = cdd.copy_generators(poly)
-    vertices = np.array(ext.array)[:, 1:]
+    poly_frac = cdd.gmp.polyhedron_from_matrix(mat_frac)
+    ext_frac = cdd.gmp.copy_generators(poly_frac)
+    vertices_frac = np.array(ext_frac.array)[:, 1:]
+    vertices = np.array([[float(x) for x in row] 
+                     for row in vertices_frac], dtype=object)
 
     # Compute the centroid as the average across extreme points
     centroid = np.sum(vertices, axis=0) / len(vertices)
@@ -102,6 +108,7 @@ def centroid_cset(vec_min, vec_max) -> np.array:
     safe_assert(len(b) == 2 * len(vec_min) + 1)
     safe_assert(A.shape == (len(b), len(vec_min)))
     safe_assert(bA.shape == (2 * len(vec_min) + 1, len(vec_min) + 1))
+    safe_assert(vertices.shape[1] == n_par)
 
     return centroid
 
