@@ -52,12 +52,14 @@ def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
 
     return
 
+
 # Get a random BN inside a CN
 def atk_ran(bn_min, bn_max):
 
     bn = sample_from_cn(bn_min, bn_max, 1)
 
     return bn[0]
+
 
 # Get the centroid of a CN
 def atk_cen(bn_min, bn_max):

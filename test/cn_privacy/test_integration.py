@@ -46,6 +46,7 @@ def test_def_idm_atk_cen(monkeypatch):
     # Run experiment
     exp.main()
 
+
 def test_def_ran_atk_ran(monkeypatch):
 
     monkeypatch.setattr(

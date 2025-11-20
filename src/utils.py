@@ -87,8 +87,9 @@ def centroid_cset(vec_min, vec_max) -> np.array:
     )
     b = np.concatenate((vec_max, -vec_min, np.atleast_1d(-1))).reshape(len(A), 1)
     bA = np.concatenate((b, A), axis=1)
-    bA_frac = np.array([[Fraction(x).limit_denominator() for x in row] 
-                     for row in bA], dtype=object)  # Needed for numerical stability
+    bA_frac = np.array(
+        [[Fraction(x).limit_denominator() for x in row] for row in bA], dtype=object
+    )  # Needed for numerical stability
     mat_frac = cdd.gmp.matrix_from_array(
         array=bA_frac, rep_type=cdd.RepType.INEQUALITY, lin_set=set([len(A) - 1])
     )
@@ -97,8 +98,9 @@ def centroid_cset(vec_min, vec_max) -> np.array:
     poly_frac = cdd.gmp.polyhedron_from_matrix(mat_frac)
     ext_frac = cdd.gmp.copy_generators(poly_frac)
     vertices_frac = np.array(ext_frac.array)[:, 1:]
-    vertices = np.array([[float(x) for x in row] 
-                     for row in vertices_frac], dtype=object)
+    vertices = np.array(
+        [[float(x) for x in row] for row in vertices_frac], dtype=object
+    )
 
     # Compute the centroid as the average across extreme points
     centroid = np.sum(vertices, axis=0) / len(vertices)

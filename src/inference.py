@@ -62,10 +62,13 @@ def inferences(exp, config, def_mec, def_args):
     bn_noisy = noisy_bn(bn, scale)
 
     # Run inferences
-    gt_mpes, _ = run_inference_bn(gt, target, evid_vec)
-    bn_mpes, bn_probs = run_inference_bn(bn, target, evid_vec)
-    bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, target, evid_vec)
-    cn_mpes, cn_probs, cn_probs_alt = run_inference_cn(cn, target, evid_vec, exp)
+    try:
+        gt_mpes, _ = run_inference_bn(gt, target, evid_vec)
+        bn_mpes, bn_probs = run_inference_bn(bn, target, evid_vec)
+        bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, target, evid_vec)
+        cn_mpes, cn_probs, cn_probs_alt = run_inference_cn(cn, target, evid_vec, exp)
+    except:
+        return
 
     # Save results
     results = pd.DataFrame(
@@ -85,6 +88,8 @@ def inferences(exp, config, def_mec, def_args):
         f'{cur_dir / config["results_path"]}/inferences/{exp}.csv',
         index=False,
     )
+
+    return
 
 
 # MPE function for BN
