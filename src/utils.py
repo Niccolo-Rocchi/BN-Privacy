@@ -82,34 +82,34 @@ def maxent_cset(vec_min, vec_max) -> np.array:
 
     rank = {v: k for k, v in enumerate(sorted(set(vec_min)))}
     vec_order = np.array([rank[val] for val in vec_min])
-
     s = 1 - np.sum(vec_min)
-
     out = vec_min
+
     while s > 0:
         idx0 = np.where(vec_order == 0)[0]
         idx1 = np.where(vec_order == 1)[0]
-        idx_len = len(idx0)
+        idx0_len = len(idx0)
+        idx1_len = len(idx1)
 
-        
-
-        try:
-            s_cond = s / idx_len < out[idx1[0]] - out[idx0[0]]
+        if idx1_len != 0:
+            diff = out[idx1[0]] - out[idx0[0]]
+            s_cond = s / idx0_len < diff
             mat = np.stack(
                 [
                     (
-                        (s / idx_len) * np.ones(len(idx0))
+                        (s / idx0_len) * np.ones(len(idx0))
                         if s_cond
-                        else out[idx1] - out[idx0]
+                        else diff * np.ones(len(idx0))
                     ),
                     vec_max[idx0] - out[idx0],
                 ]
             )
-        except IndexError:
+        else:
             s_cond = True
             mat = np.stack(
-                [(s / idx_len) * np.ones(len(idx0)), vec_max[idx0] - out[idx0]]
+                [(s / idx0_len) * np.ones(len(idx0)), vec_max[idx0] - out[idx0]]
             )
+            
 
         mat_min = np.min(mat)
         q = np.argwhere(mat == mat_min)
