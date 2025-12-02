@@ -38,14 +38,14 @@ The `compose.yaml` file contains a set of pre-set experiments. Additional ones c
 
 Generate models and data for all experiments (controlled by `config.yaml`):
 
-```bash
+```sh
 python -m experiments.cn_privacy.generate
 python -m experiments.cn_vs_noisybn.generate
 ```
 
 Run one or more experiments with:
 
-```bash
+```sh
 docker compose up [service name]
 ```
 
@@ -53,7 +53,7 @@ Results will be available under `experiments/<name>/output_*`.
 
 To check the status, run one or more of the following:
 
-```bash
+```sh
 docker compose ps
 docker compose logs [service name]
 docker stats
@@ -63,14 +63,14 @@ docker stats
 
 Create and activate a Python virtual environment: 
 
-```bash
+```sh
 python3 -m venv venv
 source venv/bin/activate[.fish]  # use `.fish` suffix if using fish shell
 ```
 
 Install dependencies: 
 
-```bash
+```sh
 pip install -r requirements.txt
 ```
 
@@ -78,7 +78,7 @@ pip install -r requirements.txt
 
 Upgrade dependencies: 
 
-```bash
+```sh
 pip install --upgrade $(pip freeze | cut -d '=' -f 1)
 pip freeze > requirements.txt
 ```
@@ -87,13 +87,13 @@ pip freeze > requirements.txt
 
 Generate models and data (controlled by `config.yaml`):
 
-```bash
+```sh
 python -m experiments.<name>.generate
 ```
 
 Run an experiment: 
 
-```bash
+```sh
 python -m experiments.<name>.exp def_mec=<def_name> [param=value] atk_mec=<def_name> [param=value]
 ```
 
@@ -104,7 +104,7 @@ Results will be available under `experiments/<name>/output`.
 
 Run integration tests:
 
-```bash
+```sh
 pytest [--cov=src] [--cov-report=term-missing] [--capture=no]
 ```
 
@@ -112,20 +112,34 @@ pytest [--cov=src] [--cov-report=term-missing] [--capture=no]
 
 Format code by running:
 
-```bash
+```sh
 black .
 isort .
 ```
 
 Lint code by running:
 
-```bash
+```sh
 flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv
 flake8 . --count --exit-zero --max-complexity=10 --ignore=E203 --max-line-length=140 --statistics --exclude=venv
 ```
 
 Analyze code by running:
 
-```bash
+```sh
 pylint $(git ls-files '*.py')
+```
+
+## Running actions locally
+
+Install `act`:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+```
+
+Run `act` with: 
+
+```sh
+sudo ./bin/act [-W <path_to_file>]
 ```
