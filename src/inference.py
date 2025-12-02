@@ -1,3 +1,4 @@
+import inspect
 import math
 
 import numpy as np
@@ -5,17 +6,28 @@ import pandas as pd
 import pyagrum as gum
 from more_itertools import random_product
 
-from src.config import get_base_path, set_global_seed
-from src.utils import add_counts_to_bn, get_min_max_bns, noisy_bn, safe_assert
+import src.defense
+from src.config import get_cur_dir, safe_assert, set_seed
+from src.defense import noisy_bn
+from src.learning import learn_bn_params
+from src.utils import get_min_max_bns
 
 
-def run_inferences(exp, ess, eps, config):
+def inferences(exp, config, def_mec, def_args):
 
-    base_path = get_base_path(config)
+    # Read config
+    cur_dir = get_cur_dir(config)
     target = config["target_var"]
 
+    # Read data
+    auc_res = pd.read_csv(f'{cur_dir}/{config["auc_meta"]}')
+    eps_vec = [
+        i for i in auc_res.loc[auc_res["exp"] == exp, "epsilon"].values if i is not None
+    ]
+    eps = np.mean(eps_vec)
+
     # Set seed
-    set_global_seed(config["seed"])
+    set_seed()
 
     # Set list of evidence
     evid_vec = [
@@ -24,29 +36,39 @@ def run_inferences(exp, ess, eps, config):
     ]
 
     # Store ground-truth BN
-    gt = gum.loadBN(f'{base_path / config["bns_path"]}/{exp}.bif')
-    gpop = pd.read_csv(f'{base_path / config["data_path"]}/{exp}.csv')
+    gt = gum.loadBN(f'{cur_dir / config["bns_path"]}/gt/{exp}.bif')
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
 
-    # Learn BN from gpop
-    bn_learner = gum.BNLearner(gpop)
-    bn_learner.useSmoothingPrior(1e-5)
-    bn = bn_learner.learnParameters(gt.dag())
+    # Learn BN from gpop                            #TODO: save results
+    bn = learn_bn_params(gt, gpop)
 
-    # Learn CN from gpop
-    bn_copy = gum.BayesNet(bn)
-    add_counts_to_bn(bn_copy, gpop)
-    cn = gum.CredalNet(bn_copy)
-    cn.idmLearning(ess)
+    # Learn CN from gpop (defense mechanism)        #TODO: save results
+    def_mec_fn = getattr(src.defense, def_mec)  # Get the related function
+    sig = inspect.signature(def_mec_fn)  # Get its signature
+    args = {
+        k: v
+        for k, v in {
+            "bn": bn,
+            "ess": def_args.get("ess", None),
+            "delta": def_args.get("delta", None),
+            "data": gpop,
+        }.items()
+        if k in sig.parameters
+    }
+    cn = def_mec_fn(**args)  # Keep only `def_mec`` args
 
-    # Learn noisy BN from gpop
+    # Learn noisy BN from gpop                      #TODO: save results
     scale = (2 * bn.size()) / (len(gpop) * eps)
     bn_noisy = noisy_bn(bn, scale)
 
     # Run inferences
-    gt_mpes, _ = run_inference_bn(gt, target, evid_vec)
-    bn_mpes, bn_probs = run_inference_bn(bn, target, evid_vec)
-    bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, target, evid_vec)
-    cn_mpes, cn_probs, cn_probs_alt = run_inference_cn(cn, target, evid_vec, exp)
+    try:
+        gt_mpes, _ = run_inference_bn(gt, target, evid_vec)
+        bn_mpes, bn_probs = run_inference_bn(bn, target, evid_vec)
+        bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, target, evid_vec)
+        cn_mpes, cn_probs, cn_probs_alt = run_inference_cn(cn, target, evid_vec, exp)
+    except:
+        return
 
     # Save results
     results = pd.DataFrame(
@@ -62,12 +84,12 @@ def run_inferences(exp, ess, eps, config):
         }
     )
 
-    res_path = (
-        base_path
-        / config["results_path"]
-        / f'results_nodes{config["n_nodes"]}_ess{ess}'
+    results.to_csv(
+        f'{cur_dir / config["results_path"]}/inferences/{exp}.csv',
+        index=False,
     )
-    results.to_csv(f"{res_path}/{exp}.csv", index=False)
+
+    return
 
 
 # MPE function for BN
@@ -167,6 +189,9 @@ def run_inference_bn(bn, target: str, evid_vec):
     cov = sorted(list(bn.names()))
     cov.remove(target)
 
+    # Set seed
+    set_seed()
+
     # Debug
     safe_assert(len(cov) == bn.size() - 1)
 
@@ -199,6 +224,9 @@ def run_inference_cn(cn, target: str, evid_vec, exp: str):
     bn_min, bn_max = get_min_max_bns(cn, exp)
     cov = sorted(list(bn_min.names()))
     cov.remove(target)
+
+    # Set seed
+    set_seed()
 
     # Debug
     safe_assert(len(cov) == bn_min.size() - 1)

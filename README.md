@@ -2,104 +2,144 @@
 
 Code for paper ["Towards Privacy-Aware Bayesian Networks: A Credal Approach"](https://doi.org/10.3233/FAIA251419) presented at [ECAI 2025](https://ecai2025.org/).
 
-## Set up Python environment
+## Preliminaries
 
-Create and activate a Python virtual environment with: 
+### Experiments
 
-```bash
+`<name>` is the name of the experiment to run. Each `<name>` has its own directory, which is named the same way. Each of these contains the experiment logic, configuration file (`config.yaml`), eventually generated models and data, output directory, and a `Plot_results.ipynb` notebook to plot results.
+
+`<name>` can be one of the following:
+
+1. `cn_privacy`: run membership inference attack against a Bayesian network (BN), its related credal network (CN), and compute the theoretical privacy estimate of BN.
+
+2. `cn_vs_noisybn`: compare two privacy techniques, namely the CN and a noisy version of BN. All models are naive Bayes with target variable T. First, the CN and noisy BN hyperparameters are fine-tuned so that they achieve the same privacy level; then, their accuracy is computed in terms of most probable explanation (MPE) on variable T.
+
+For additional details, we refer to the paper.
+
+### Attacks and defenses
+
+Each experiment requires the user to specify one defense and one attack mechanisms, plus additional related hyperparameters. Below, the mechanisms and hyperparameters names are reported.
+
+Implemented defenses:
+- `def_idm`. Requires: `ess`.
+- `def_ran`. Requires: `delta`.
+
+Implemented attacks:
+- `atk_mle`. Requires: `n_bns`.
+- `atk_cen`.
+- `atk_ran`.
+- `atk_ent`.
+
+## Running code
+
+### Using Docker (recommended)
+
+The `compose.yaml` file contains a set of pre-set experiments. Additional ones can also be specified. The `generate_compose.py` file helps in generating them automatically.
+
+Generate models and data for all experiments (controlled by `config.yaml`):
+
+```sh
+python -m experiments.cn_privacy.generate
+python -m experiments.cn_vs_noisybn.generate
+```
+
+Run one or more experiments with:
+
+```sh
+docker compose up [service name]
+```
+
+Results will be available under `experiments/<name>/output_*`.
+
+To check the status, run one or more of the following:
+
+```sh
+docker compose ps
+docker compose logs [service name]
+docker stats
+```
+
+### Local computation
+
+Create and activate a Python virtual environment: 
+
+```sh
 python3 -m venv venv
 source venv/bin/activate[.fish]  # use `.fish` suffix if using fish shell
 ```
 
-Install all dependencies with: 
+Install dependencies: 
 
-```bash
+```sh
 pip install -r requirements.txt
 ```
 
-Upgrade all Python packages with: 
+*Notice*: if some package is missing locally, see the `Dockerfile` for additional packages to be installed (names refer to Ubuntu/Debian).
 
-```bash
+Upgrade dependencies: 
+
+```sh
 pip install --upgrade $(pip freeze | cut -d '=' -f 1)
 pip freeze > requirements.txt
 ```
 
-This updates the requirements file with the upgraded packages.
+*Notice:* each of the following command will overwrite any related output. 
 
-## Experiments
+Generate models and data (controlled by `config.yaml`):
 
-`<name>` is the name of the experiment to run. It can be one of the following.
-
-1. `cn_privacy`: run membership inference attack against a Bayesian network (BN), its related credal network (CN), and compute the theoretical privacy estimate of BN. The pipeline and results are described in the paper.
-
-2. `cn_vs_noisybn`: additional experiment, not reported in the paper. It compares two privacy techniques, namely the CN and a noisy version of BN. All models are naive Bayes with target variable T. First, the CN and noisy BN hyperparameters are fine-tuned so that they achieve the same privacy level; then, their accuracy is computed in terms of most probable explanation (MPE) on variable T.
-
-## Run code
-
-### With Docker (recommended)
-
-1. Build the Docker image:
-
-```bash
-docker build . -t bnp:2025
+```sh
+python -m experiments.<name>.generate
 ```
 
-2. Run the experiment:
+Run an experiment: 
 
-```bash
-docker run [-d] [--rm] -v bnp:/workspace bnp:2025 python -m experiments.<name>.main
+```sh
+python -m experiments.<name>.exp def_mec=<def_name> [param=value] atk_mec=<def_name> [param=value]
 ```
 
-3. Results available at: 
+Results will be available under `experiments/<name>/output`.
 
-`/var/lib/docker/volumes/bnp/_data/experiments/<name>/output/`.
 
-### Without Docker
+## Testing code
 
-1. Run the experiment: 
+Run integration tests:
 
-```bash
-python -m experiments.<name>.main
-```
-
-2. Results available at: 
-
-`experiments/<name>/output/`.
-
-## Test code
-
-Run tests with:
-
-```bash
+```sh
 pytest [--cov=src] [--cov-report=term-missing] [--capture=no]
 ```
-
-Test results are available at: 
-
-`test/<name>/output/`.
 
 ## Formatting and linting
 
 Format code by running:
 
-```bash
+```sh
 black .
 isort .
 ```
 
 Lint code by running:
 
-```bash
+```sh
 flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv
-flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=venv
+flake8 . --count --exit-zero --max-complexity=10 --ignore=E203 --max-line-length=140 --statistics --exclude=venv
 ```
 
 Analyze code by running:
 
-```bash
+```sh
 pylint $(git ls-files '*.py')
 ```
 
-## Plot results
+## Running actions locally
 
-Use the `Plot_results.ipynb` notebook available for each experiment. Plots will be saved at: `experiments/<name>/output/plots`.
+Install `act`:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+```
+
+Run `act` with: 
+
+```sh
+sudo ./bin/act [-W <path_to_file>]
+```
