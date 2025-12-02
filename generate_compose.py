@@ -1,4 +1,3 @@
-import sys
 from itertools import product
 
 import yaml

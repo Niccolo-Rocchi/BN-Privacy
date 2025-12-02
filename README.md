@@ -28,6 +28,7 @@ Implemented attacks:
 - `atk_mle`. Requires: `n_bns`.
 - `atk_cen`.
 - `atk_ran`.
+- `atk_ent`.
 
 ## Running code
 

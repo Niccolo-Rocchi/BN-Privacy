@@ -31,6 +31,102 @@ def add_counts_to_bn(bn, data):
         bn.cpt(node).fillWith(counts_array.flatten().tolist())
 
 
+# Get the BN inside a CN with max entropy distribution
+def maxent_cn(bn_min, bn_max) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get the centroid CPT, ...
+        cpt = maxent_cpt(bn_min.cpt(var), bn_max.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max))
+
+    return bn
+
+
+# Get the BN CPT inside a CN CPT with max entropy distribution
+def maxent_cpt(cpt_min, cpt_max) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the centroid credal set, ...
+        c = maxent_cset(cpt_min[row, :], cpt_max[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the max-entropy distribution inside a credal set
+def maxent_cset(vec_min, vec_max) -> np.array:
+
+    rank = {v: k for k, v in enumerate(sorted(set(vec_min)))}
+    vec_order = np.array([rank[val] for val in vec_min])
+
+    s = 1 - np.sum(vec_min)
+
+    out = vec_min
+    while s > 0:
+        idx0 = np.where(vec_order == 0)[0]
+        idx1 = np.where(vec_order == 1)[0]
+        idx_len = len(idx0)
+
+        
+
+        try:
+            s_cond = s / idx_len < out[idx1[0]] - out[idx0[0]]
+            mat = np.stack(
+                [
+                    (
+                        (s / idx_len) * np.ones(len(idx0))
+                        if s_cond
+                        else out[idx1] - out[idx0]
+                    ),
+                    vec_max[idx0] - out[idx0],
+                ]
+            )
+        except IndexError:
+            s_cond = True
+            mat = np.stack(
+                [(s / idx_len) * np.ones(len(idx0)), vec_max[idx0] - out[idx0]]
+            )
+
+        mat_min = np.min(mat)
+        q = np.argwhere(mat == mat_min)
+
+        if np.any(q[:, 0] == 1):
+            if len(idx0) > len(q):
+                vec_order[~np.isin(np.arange(len(out)), idx0[q[:, 1]])] += 1
+        elif not s_cond:
+            vec_order[idx0[q[:, 1]]] += 1
+
+        out[idx0] += mat_min
+        s -= mat_min * len(idx0)
+        vec_order -= 1
+
+    return out
+
+
 # Get the centroid of a CN
 def centroid_cn(bn_min, bn_max) -> gum.BayesNet:
 

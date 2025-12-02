@@ -6,7 +6,7 @@ import pyagrum as gum
 
 from src.config import get_cur_dir, set_seed
 from src.mia import get_ll
-from src.utils import centroid_cn, sample_from_cn
+from src.utils import centroid_cn, maxent_cn, sample_from_cn
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
@@ -51,6 +51,14 @@ def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
         )
 
     return
+
+
+# Get the BN inside a CN with max entropy distribution
+def atk_ent(bn_min, bn_max):
+
+    bn = maxent_cn(bn_min, bn_max)
+
+    return bn
 
 
 # Get a random BN inside a CN
