@@ -9,7 +9,7 @@ from src.utils import add_counts_to_bn, check_consistency
 
 
 # Apply defense mechanism to a BN, namely, derive a CN from a BN
-def defense_mechanism(exp, config, def_mec, def_args) -> None:
+def defense_mechanism(exp, config, def_mec, def_args, save_res=True) -> None:
 
     # Get current directory
     cur_dir = get_cur_dir(config)
@@ -45,11 +45,14 @@ def defense_mechanism(exp, config, def_mec, def_args) -> None:
             if k in sig.parameters
         }
         cn = def_mec_fn(**args)  # Keep only `def_mec` args
-        base_path = cur_dir / config["cns_path"]
-        cn.saveBNsMinMax(
-            f"{base_path}/bn_min_{exp}_sample{sample}.bif",
-            f"{base_path}/bn_max_{exp}_sample{sample}.bif",
-        )
+
+        # Save results
+        if save_res:
+            base_path = cur_dir / config["cns_path"]
+            cn.saveBNsMinMax(
+                f"{base_path}/bn_min_{exp}_sample{sample}.bif",
+                f"{base_path}/bn_max_{exp}_sample{sample}.bif",
+            )
 
     return
 

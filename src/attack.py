@@ -10,7 +10,7 @@ from src.utils import centroid_cn, maxent_cn, sample_from_cn
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
-def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
+def attack_mechanism(exp, config, atk_mec, atk_args, save_res=True) -> None:
 
     # Get current directory
     cur_dir = get_cur_dir(config)
@@ -46,9 +46,12 @@ def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
             if k in sig.parameters
         }
         bn = atk_mec_fn(**args)
-        gum.saveBN(
-            bn, f'{cur_dir / config["atk_path"]}/{f"bn_{exp}_sample{sample}"}.bif'
-        )
+
+        # Save results
+        if save_res:
+            gum.saveBN(
+                bn, f'{cur_dir / config["atk_path"]}/{f"bn_{exp}_sample{sample}"}.bif'
+            )
 
     return
 
