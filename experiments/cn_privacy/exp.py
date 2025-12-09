@@ -29,14 +29,14 @@ def main():
     print("## Defense mechanism: [", def_mec, def_args, "] ##", flush=True)
     create_clean_dir(cur_dir / config["cns_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(defense_mechanism)(exp, config, def_mec, def_args, save_res=True) for exp in exp_vec
+        delayed(defense_mechanism)(exp, config, def_mec, def_args) for exp in exp_vec
     )
 
     # Attack mechanism
     print("## Attack mechanism: [", atk_mec, atk_args, "] ##", flush=True)
     create_clean_dir(cur_dir / config["atk_path"])
     _ = Parallel(n_jobs=num_cores)(
-        delayed(attack_mechanism)(exp, config, atk_mec, atk_args, save_res=True) for exp in exp_vec
+        delayed(attack_mechanism)(exp, config, atk_mec, atk_args) for exp in exp_vec
     )
 
     # MIA vs CN

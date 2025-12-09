@@ -10,7 +10,7 @@ from src.utils import centroid_cn, maxent_cn, sample_from_cn
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
-def attack_mechanism(exp, config, atk_mec, atk_args, save_res=True) -> None:
+def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
 
     # Get current directory
     cur_dir = get_cur_dir(config)
@@ -48,10 +48,9 @@ def attack_mechanism(exp, config, atk_mec, atk_args, save_res=True) -> None:
         bn = atk_mec_fn(**args)
 
         # Save results
-        if save_res:
-            gum.saveBN(
-                bn, f'{cur_dir / config["atk_path"]}/{f"bn_{exp}_sample{sample}"}.bif'
-            )
+        gum.saveBN(
+            bn, f'{cur_dir / config["atk_path"]}/{f"bn_{exp}_sample{sample}"}.bif'
+        )
 
     return
 
@@ -92,6 +91,18 @@ def atk_mle(bn_min, bn_max, data, n_bns: int):
     return bn
 
 
+# Get the minimum likelihood BN inside a CN, i.e., the maximum negative likelihood (MNE) BN.
+def atk_mne(bn_min, bn_max, data, n_bns: int):
+
+    # Sample from the CN ...
+    bns_sample = sample_from_cn(bn_min, bn_max, n_bns)
+
+    # ... and take the MNE one
+    bn = mne_bn(bns_sample, data)
+
+    return bn
+
+
 # Get the maximum likelihood BN within a set
 def mle_bn(bns_sample, data):
     """
@@ -115,3 +126,29 @@ def mle_bn(bns_sample, data):
             mle = llr
 
     return mle_bn
+
+
+# Get the maximum negative likelihood BN within a set
+def mne_bn(bns_sample, data):
+    """
+    Given a list `bns_sample` of BNs,
+    find argmax_{BN in bns_sample} -ll(BN | data),
+    where ll is the log-likelihood function.
+    """
+
+    mne_bn = None
+    mne = 0
+
+    for bn in bns_sample:
+
+        # Estimate the likelihood of data
+        bn_ie = gum.LazyPropagation(bn)
+        llr_im = data.apply(lambda x: get_ll(x.to_dict(), bn_ie), axis=1).dropna()
+        llr = np.sum(llr_im)
+        neg_llr = -llr
+
+        if neg_llr > mne:
+            mne_bn = bn
+            mne = neg_llr
+
+    return mne_bn

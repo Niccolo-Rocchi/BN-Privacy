@@ -5,14 +5,14 @@ import yaml
 # Set hyperparameters
 names = ["cn_privacy"]
 def_mecs = {
-    "def_idm": {"ess": [1, 10, 100, 1000]}, 
+    # "def_idm": {"ess": [1, 10, 100, 1000]},
     "def_ran": {"delta": [0.1, 0.3, 0.5, 0.7, 1.0]}
 }
 atk_mecs = {
-    "atk_mle": {"n_bns": [1000]},    # 1000 for cn_privacy; 100 for cn_vs_noisybn
-    "atk_cen": {None: [None]},
-    "atk_ran": {None: [None]},
-    "atk_ent": {None: [None]},
+    "atk_mle": {"n_bns": [1000]},  # 1000 for cn_privacy; 100 for cn_vs_noisybn
+    # "atk_cen": {None: [None]},
+    # "atk_ran": {None: [None]},
+    # "atk_ent": {None: [None]},
 }
 
 # Initialize the `compose.yaml` file

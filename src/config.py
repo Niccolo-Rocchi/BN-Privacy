@@ -36,7 +36,7 @@ def map_sys_args(sys_args, config) -> tuple:
 
     # Save attack parameters
     atk_args = dict()
-    if atk_mec == "atk_mle":
+    if atk_mec == "atk_mle" or atk_mec == "atk_mne":
         atk_args["n_bns"] = int(params.pop("n_bns"))
         assert atk_args["n_bns"] >= 1
     elif atk_mec == "atk_cen" or atk_mec == "atk_ran" or atk_mec == "atk_ent":

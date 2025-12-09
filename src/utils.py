@@ -109,7 +109,6 @@ def maxent_cset(vec_min, vec_max) -> np.array:
             mat = np.stack(
                 [(s / idx0_len) * np.ones(len(idx0)), vec_max[idx0] - out[idx0]]
             )
-            
 
         mat_min = np.min(mat)
         q = np.argwhere(mat == mat_min)

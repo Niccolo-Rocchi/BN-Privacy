@@ -29,6 +29,26 @@ def test_def_idm_atk_mle(monkeypatch):
     exp.main()
 
 
+def test_def_ran_atk_mne(monkeypatch):
+
+    monkeypatch.setattr(
+        sys, "argv", ["def_mec=def_ran", "delta=0.3", "atk_mec=atk_mne", "n_bns=5"]
+    )
+
+    # Run experiment
+    exp.main()
+
+
+def test_def_idm_atk_mne(monkeypatch):
+
+    monkeypatch.setattr(
+        sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_mne", "n_bns=5"]
+    )
+
+    # Run experiment
+    exp.main()
+
+
 def test_def_ran_atk_cen(monkeypatch):
 
     monkeypatch.setattr(
