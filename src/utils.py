@@ -193,7 +193,7 @@ def mle_cset(vec_min, vec_max, counts) -> np.array:
 
     # Solve the optimization problem
     problem = cp.Problem(objective, constraints)
-    problem.solve()
+    problem.solve(verbose=True)
 
     mle_vec = np.array(p.value)
 
@@ -277,6 +277,70 @@ def mne_cset(vec_min, vec_max, counts) -> np.array:
     safe_assert(len(vec_min) == len(vec_max))
 
     return vec_best
+
+# Get a random BN inside a CN
+def ran_cn(bn_min, bn_max) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get a random CPT, ...
+        cpt = ran_cpt(bn_min.cpt(var), bn_max.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max))
+
+    return bn
+
+
+# Get a random BN CPT inside a CN CPT
+def ran_cpt(cpt_min, cpt_max) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... sample randomly from the credal set, ...
+        c = ran_cset(cpt_min[row, :], cpt_max[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get a random distribution inside a credal set
+def ran_cset(vec_min, vec_max) -> np.array:
+
+    # Get the credal set vertices
+    vertices = vertices_cset(vec_min, vec_max)
+
+    # Sample weights for vertices
+    n = len(vertices)
+    w = np.random.dirichlet(np.ones(n))
+
+    # Draw the linear combination of vertices
+    ran_vec = w @ vertices
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return ran_vec
 
 
 # Get the centroid of a CN
@@ -546,7 +610,7 @@ def get_min_max_bns(cn, exp: str = ""):
 
 
 # Generate a random CN with local IDM
-def random_cn(n_nodes, edge_density, n_modmax, ess, s_size) -> tuple:
+def generate_random_cn(n_nodes, edge_density, n_modmax, ess, s_size) -> tuple:
 
     # Generate a BN
     bn_gen = gum.BNGenerator()

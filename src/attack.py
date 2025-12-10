@@ -6,7 +6,7 @@ import pyagrum as gum
 
 from src.config import get_cur_dir, set_seed
 from src.mia import get_ll
-from src.utils import centroid_cn, maxent_cn, mle_cn, mne_cn, sample_from_cn
+from src.utils import centroid_cn, maxent_cn, mle_cn, mne_cn, ran_cn
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
@@ -66,9 +66,9 @@ def atk_ent(bn_min, bn_max):
 # Get a random BN inside a CN
 def atk_ran(bn_min, bn_max):
 
-    bn = sample_from_cn(bn_min, bn_max, 1)
+    bn = ran_cn(bn_min, bn_max)
 
-    return bn[0]
+    return bn
 
 
 # Get the centroid of a CN
