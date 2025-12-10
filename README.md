@@ -25,7 +25,7 @@ Implemented defenses:
 - `def_ran`. Requires: `delta`.
 
 Implemented attacks:
-- `atk_mle`. Requires: `n_bns`.
+- `atk_mle`.
 - `atk_cen`.
 - `atk_ran`.
 - `atk_ent`.

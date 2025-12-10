@@ -6,7 +6,7 @@ import pyagrum as gum
 
 from src.config import get_cur_dir, set_seed
 from src.mia import get_ll
-from src.utils import centroid_cn, maxent_cn, sample_from_cn
+from src.utils import centroid_cn, maxent_cn, mle_cn, mne_cn, sample_from_cn
 
 
 # Apply attack mechanism to a BN, namely, derive a BN from a CN
@@ -80,55 +80,22 @@ def atk_cen(bn_min, bn_max):
 
 
 # Get the maximum likelihood BN inside a CN
-def atk_mle(bn_min, bn_max, data, n_bns: int):
+def atk_mle(bn_min, bn_max, data):
 
-    # Sample from the CN ...
-    bns_sample = sample_from_cn(bn_min, bn_max, n_bns)
-
-    # ... and take the MLE one
-    bn = mle_bn(bns_sample, data)
+    bn = mle_cn(bn_min, bn_max, data)
 
     return bn
 
 
 # Get the minimum likelihood BN inside a CN, i.e., the maximum negative likelihood (MNE) BN.
-def atk_mne(bn_min, bn_max, data, n_bns: int):
+def atk_mne(bn_min, bn_max, data):
 
-    # Sample from the CN ...
-    bns_sample = sample_from_cn(bn_min, bn_max, n_bns)
-
-    # ... and take the MNE one
-    bn = mne_bn(bns_sample, data)
+    bn = mne_cn(bn_min, bn_max, data)
 
     return bn
 
 
-# Get the maximum likelihood BN within a set
-def mle_bn(bns_sample, data):
-    """
-    Given a list `bns_sample` of BNs,
-    find argmax_{BN in bns_sample} ll(BN | data),
-    where ll is the log-likelihood function.
-    """
-
-    mle_bn = None
-    mle = -np.inf
-
-    for bn in bns_sample:
-
-        # Estimate the likelihood of data
-        bn_ie = gum.LazyPropagation(bn)
-        llr_im = data.apply(lambda x: get_ll(x.to_dict(), bn_ie), axis=1).dropna()
-        llr = np.sum(llr_im)
-
-        if llr > mle:
-            mle_bn = bn
-            mle = llr
-
-    return mle_bn
-
-
-# Get the maximum negative likelihood BN within a set
+# Get the maximum negative likelihood BN within a CN
 def mne_bn(bns_sample, data):
     """
     Given a list `bns_sample` of BNs,

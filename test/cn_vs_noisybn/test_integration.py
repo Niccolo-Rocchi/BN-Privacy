@@ -12,7 +12,7 @@ def test_generation():
 def test_def_ran_atk_mle(monkeypatch):
 
     monkeypatch.setattr(
-        sys, "argv", ["def_mec=def_ran", "delta=0.3", "atk_mec=atk_mle", "n_bns=5"]
+        sys, "argv", ["def_mec=def_ran", "delta=0.3", "atk_mec=atk_mle"]
     )
 
     # Run experiment
@@ -21,9 +21,7 @@ def test_def_ran_atk_mle(monkeypatch):
 
 def test_def_idm_atk_mle(monkeypatch):
 
-    monkeypatch.setattr(
-        sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_mle", "n_bns=5"]
-    )
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_mle"])
 
     # Run experiment
     exp.main()
@@ -32,7 +30,7 @@ def test_def_idm_atk_mle(monkeypatch):
 def test_def_ran_atk_mne(monkeypatch):
 
     monkeypatch.setattr(
-        sys, "argv", ["def_mec=def_ran", "delta=0.3", "atk_mec=atk_mne", "n_bns=5"]
+        sys, "argv", ["def_mec=def_ran", "delta=0.3", "atk_mec=atk_mne"]
     )
 
     # Run experiment
@@ -41,9 +39,7 @@ def test_def_ran_atk_mne(monkeypatch):
 
 def test_def_idm_atk_mne(monkeypatch):
 
-    monkeypatch.setattr(
-        sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_mne", "n_bns=5"]
-    )
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_mne"])
 
     # Run experiment
     exp.main()

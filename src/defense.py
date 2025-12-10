@@ -122,7 +122,7 @@ def noisy_bn(bn, scale: float):
         # Add noise to P(X, Pa(X)) and normalize
         noise = np.random.laplace(scale=scale, size=np.prod(joint.shape))
         noisy_joint = np.clip(
-            joint.toarray().flatten() + noise, a_min=10e-10, a_max=None
+            joint.toarray().flatten() + noise, a_min=10e-9, a_max=None
         )
         noisy_joint = noisy_joint / np.sum(noisy_joint)
         joint.fillWith(noisy_joint)

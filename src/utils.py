@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 
 import cdd
 import cdd.gmp
+import cvxpy as cp
 import hopsy
 import numpy as np
 import pyagrum as gum
@@ -40,7 +41,7 @@ def maxent_cn(bn_min, bn_max) -> gum.BayesNet:
     # For each variable ...
     for var in bn.names():
 
-        # ... get the centroid CPT, ...
+        # ... get the maxent CPT, ...
         cpt = maxent_cpt(bn_min.cpt(var), bn_max.cpt(var))
 
         # ... and fill the BN
@@ -63,7 +64,7 @@ def maxent_cpt(cpt_min, cpt_max) -> np.array:
     cpt = []
     for row in range(cpt_min.shape[0]):
 
-        # ... get the centroid credal set, ...
+        # ... get the maxent credal set, ...
         c = maxent_cset(cpt_min[row, :], cpt_max[row, :])
         cpt.append(c)
 
@@ -126,6 +127,158 @@ def maxent_cset(vec_min, vec_max) -> np.array:
     return out
 
 
+# Get the max likelihood BN inside a CN
+def mle_cn(bn_min, bn_max, data) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # Store counts
+    bn_counts = gum.BayesNet(bn)
+    add_counts_to_bn(bn_counts, data)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get the MLE CPT, ...
+        cpt = mle_cpt(bn_min.cpt(var), bn_max.cpt(var), bn_counts.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max))
+
+    return bn
+
+
+# Get the max likelihood BN CPT inside a CN CPT
+def mle_cpt(cpt_min, cpt_max, cpt_counts) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+    cpt_counts = np.atleast_2d(cpt_counts.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the MLE credal set, ...
+        c = mle_cset(cpt_min[row, :], cpt_max[row, :], cpt_counts[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the max likelihood distribution inside a credal set
+def mle_cset(vec_min, vec_max, counts) -> np.array:
+
+    # Number of variables to optimize
+    n_par = len(vec_min)
+    p = cp.Variable(n_par)
+
+    # Log-likelihood to maximize
+    objective = cp.Maximize(counts @ cp.log(p))
+
+    # Constraints
+    constraints = [cp.sum(p) == 1, p >= vec_min, p <= vec_max, p >= 10e-9]
+
+    # Solve the optimization problem
+    problem = cp.Problem(objective, constraints)
+    problem.solve()
+
+    mle_vec = np.array(p.value)
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return mle_vec
+
+
+# Get the max (-likelihood) BN (MNE) within a CN, i.e., the min likelihood BN.
+def mne_cn(bn_min, bn_max, data) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # Store counts
+    bn_counts = gum.BayesNet(bn)
+    add_counts_to_bn(bn_counts, data)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get the MNE CPT, ...
+        cpt = mne_cpt(bn_min.cpt(var), bn_max.cpt(var), bn_counts.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max))
+
+    return bn
+
+
+# Get the MNE BN CPT inside a CN CPT
+def mne_cpt(cpt_min, cpt_max, cpt_counts) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+    cpt_counts = np.atleast_2d(cpt_counts.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the MNE credal set, ...
+        c = mne_cset(cpt_min[row, :], cpt_max[row, :], cpt_counts[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the MNE distribution inside a credal set
+def mne_cset(vec_min, vec_max, counts) -> np.array:
+
+    # Get the credal set vertices
+    vertices = vertices_cset(vec_min, vec_max)
+
+    # Get the vertex that has the maximum (-likelihood)
+    vec_best = vertices[0, :]
+    mne_best = counts @ -np.log(np.where(vec_best > 0, vec_best, 1))
+
+    for row in range(vertices.shape[0]):
+
+        vec = vertices[row, :]
+        mne = counts @ -np.log(np.where(vec_best > 0, vec_best, 1))
+
+        if mne > mne_best:
+            mne_best = mne
+            vec_best = vec
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return vec_best
+
+
 # Get the centroid of a CN
 def centroid_cn(bn_min, bn_max) -> gum.BayesNet:
 
@@ -175,6 +328,21 @@ def centroid_cpt(cpt_min, cpt_max) -> np.array:
 # Get the centroid of a credal set as the average of its extreme points
 def centroid_cset(vec_min, vec_max) -> np.array:
 
+    # Get the credal set vertices
+    vertices = vertices_cset(vec_min, vec_max)
+
+    # Compute the centroid as the average across extreme points
+    centroid = np.sum(vertices, axis=0) / len(vertices)
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return centroid
+
+
+# Get the credal set vertices
+def vertices_cset(vec_min, vec_max) -> np.array:
+
     # Define the (in)equalities (i.e., get the H-representation of the credal set)
     n_par = len(vec_min)
     A = np.concatenate(
@@ -193,21 +361,15 @@ def centroid_cset(vec_min, vec_max) -> np.array:
     poly_frac = cdd.gmp.polyhedron_from_matrix(mat_frac)
     ext_frac = cdd.gmp.copy_generators(poly_frac)
     vertices_frac = np.array(ext_frac.array)[:, 1:]
-    vertices = np.array(
-        [[float(x) for x in row] for row in vertices_frac], dtype=object
-    )
-
-    # Compute the centroid as the average across extreme points
-    centroid = np.sum(vertices, axis=0) / len(vertices)
+    vertices = np.array([[float(x) for x in row] for row in vertices_frac], dtype=float)
 
     # Debug
-    safe_assert(len(vec_min) == len(vec_max))
     safe_assert(len(b) == 2 * len(vec_min) + 1)
     safe_assert(A.shape == (len(b), len(vec_min)))
     safe_assert(bA.shape == (2 * len(vec_min) + 1, len(vec_min) + 1))
     safe_assert(vertices.shape[1] == n_par)
 
-    return centroid
+    return vertices
 
 
 # BNs sampler from a CN
@@ -335,10 +497,10 @@ def check_consistency(bn, bn_min, bn_max) -> bool:
         probability_consistency = np.all(np.abs(sum_vec - 1) < 1e-5)
 
         # Check if the BN CPT is >= min CPT
-        min_consistency = np.all(bn_cpt >= bn_min_cpt)
+        min_consistency = np.all(bn_cpt - bn_min_cpt >= -1e-5)
 
         # Check if the BN CPT is <= max CPT
-        max_consistency = np.all(bn_cpt <= bn_max_cpt)
+        max_consistency = np.all(bn_cpt - bn_max_cpt <= 1e-5)
 
         consistency = probability_consistency and min_consistency and max_consistency
 
@@ -348,6 +510,7 @@ def check_consistency(bn, bn_min, bn_max) -> bool:
             print("probability_consistency: ", probability_consistency)
             print("min_consistency: ", min_consistency)
             print("max_consistency: ", max_consistency)
+            print(bn_cpt, bn_min_cpt, bn_max_cpt)
             return False
 
     return True
@@ -372,7 +535,7 @@ def are_all_bns_different(bn_vec) -> bool:
 
 
 # Extract BN min and BN max from a CN
-def get_min_max_bns(cn, exp: str):
+def get_min_max_bns(cn, exp: str = ""):
 
     with TemporaryDirectory() as tmp_path:
         cn.saveBNsMinMax(f"{tmp_path}/bn_min_{exp}.bif", f"{tmp_path}/bn_max_{exp}.bif")
@@ -380,3 +543,27 @@ def get_min_max_bns(cn, exp: str):
         bn_max = gum.loadBN(f"{tmp_path}/bn_max_{exp}.bif")
 
     return bn_min, bn_max
+
+
+# Generate a random CN with local IDM
+def random_cn(n_nodes, edge_density, n_modmax, ess, s_size) -> tuple:
+
+    # Generate a BN
+    bn_gen = gum.BNGenerator()
+    bn = bn_gen.generate(
+        n_nodes=n_nodes, n_arcs=int(n_nodes * edge_density), n_modmax=n_modmax
+    )
+
+    # Generate data
+    data_gen = gum.BNDatabaseGenerator(bn)
+    data_gen.drawSamples(s_size)
+    data_gen.setDiscretizedLabelModeRandom()
+    data = data_gen.to_pandas()
+
+    # Learn the CN by local IDM
+    bn_counts = gum.BayesNet(bn)
+    add_counts_to_bn(bn_counts, data)
+    cn = gum.CredalNet(bn_counts)
+    cn.idmLearning(ess)
+
+    return cn, data

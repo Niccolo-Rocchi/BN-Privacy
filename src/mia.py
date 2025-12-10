@@ -309,6 +309,8 @@ def get_ll(x: dict, theta):
 
     # Compute P(x | theta)
     ll = theta.evidenceProbability()
+    if ll == 0:
+        ll += 10e-9
 
     return np.log(ll)
 
