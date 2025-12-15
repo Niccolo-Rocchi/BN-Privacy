@@ -12,10 +12,10 @@ exp_meta: exp_meta.txt                              # File of metadata for exper
 # Models
 n_nodes_vec: '[4, 5]'                               # List of models' number of nodes
 edge_ratio_vec: '[1, 1.5]'                          # List of models' edge ratio
-n_modmax: 2                                         # Maximum number of variables categories
+n_modmax: 3                                         # Maximum number of variables categories
 
 # Data
-gpop_ss: 50                                         # Sample size of general population
+gpop_ss: 20                                         # Sample size of general population
 rpop_prop: 0.5                                      # Sample size of reference population = gpop_ss * rpop_prop
 pool_prop: 0.25                                     # Sample size of pool population = gpop_ss * pool_prop
 samples: 2                                          # Number of data samples

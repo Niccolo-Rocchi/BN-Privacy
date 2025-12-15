@@ -4,6 +4,7 @@ from itertools import product
 import numpy as np
 import pyagrum as gum
 from numpy.random import randint
+import pandas as pd
 
 from src.config import get_cur_dir, safe_assert, set_seed
 
@@ -44,10 +45,7 @@ def generate_naivebayes(config):
             )
 
         # ... and generate gpop from BN
-        data_gen = gum.BNDatabaseGenerator(bn)
-        data_gen.drawSamples(config["gpop_ss"])
-        data_gen.setDiscretizedLabelModeRandom()
-        gpop = data_gen.to_pandas()
+        gpop = generate_unique(bn, config["gpop_ss"])
 
         # For any data sample ...
         for sample in range(config["samples"]):
@@ -66,6 +64,8 @@ def generate_naivebayes(config):
             safe_assert(rpop_ss == len(rpop_idx))
             safe_assert(sum(gpop[f"in-pool-{sample}"]) == pool_ss)
             safe_assert(sum(gpop[f"in-rpop-{sample}"]) == rpop_ss)
+            safe_assert(sum(gpop[f"in-pool-{sample}"] & gpop[f"in-rpop-{sample}"]) == 0)
+            safe_assert(sum(~gpop[f"in-pool-{sample}"] & ~gpop[f"in-rpop-{sample}"]) == gpop_ss - pool_ss - rpop_ss)           
 
         # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
@@ -102,10 +102,8 @@ def generate_randombn(config):
             )
 
         # ... and generate gpop from BN
-        data_gen = gum.BNDatabaseGenerator(bn)
-        data_gen.drawSamples(config["gpop_ss"])
-        data_gen.setDiscretizedLabelModeRandom()
-        gpop = data_gen.to_pandas()
+        gpop = generate_unique(bn, config["gpop_ss"])
+        print(gpop.shape)
 
         # For any data sample ...
         for sample in range(config["samples"]):
@@ -124,6 +122,34 @@ def generate_randombn(config):
             safe_assert(rpop_ss == len(rpop_idx))
             safe_assert(sum(gpop[f"in-pool-{sample}"]) == pool_ss)
             safe_assert(sum(gpop[f"in-rpop-{sample}"]) == rpop_ss)
+            safe_assert(sum(gpop[f"in-pool-{sample}"] & gpop[f"in-rpop-{sample}"]) == 0)
+            safe_assert(sum(~gpop[f"in-pool-{sample}"] & ~gpop[f"in-rpop-{sample}"]) == gpop_ss - pool_ss - rpop_ss)    
 
         # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
+
+
+# Generate unique data points from a given BN
+def generate_unique(bn: gum.BayesNet, n_samples: int) -> pd.DataFrame:
+
+    # Generate data
+    data_gen = gum.BNDatabaseGenerator(bn)
+    data_gen.drawSamples(n_samples*2)
+    data = data_gen.to_pandas()
+
+    # Ensure data items are unique
+    data_unique = data.drop_duplicates()
+    check = 0
+    while len(data_unique) < n_samples:
+        data_gen.drawSamples((n_samples - len(data_unique))*5)
+        data = data_gen.to_pandas()
+        data_unique = pd.concat([data_unique, data], axis=0).drop_duplicates()
+        check += 1
+        if check >= 1e6: raise ValueError("Too many iterations, please check the data hyperparameters.")
+    data_unique = data_unique.sample(n=n_samples, ignore_index=True)
+
+    # Debug
+    safe_assert(all(data_unique == data_unique.drop_duplicates()))
+    safe_assert(len(data_unique) == n_samples)
+
+    return data_unique

@@ -193,7 +193,7 @@ def mle_cset(vec_min, vec_max, counts) -> np.array:
 
     # Solve the optimization problem
     problem = cp.Problem(objective, constraints)
-    problem.solve(verbose=True)
+    problem.solve(verbose=False)
 
     mle_vec = np.array(p.value)
 
@@ -621,7 +621,6 @@ def generate_random_cn(n_nodes, edge_density, n_modmax, ess, s_size) -> tuple:
     # Generate data
     data_gen = gum.BNDatabaseGenerator(bn)
     data_gen.drawSamples(s_size)
-    data_gen.setDiscretizedLabelModeRandom()
     data = data_gen.to_pandas()
 
     # Learn the CN by local IDM
