@@ -6,7 +6,7 @@ import pyagrum as gum
 from scipy.stats import norm
 from sklearn import metrics
 
-from src.config import get_cur_dir, set_seed
+from src.config import get_cur_dir, safe_assert, set_seed
 from src.defense import noisy_bn
 
 
@@ -39,21 +39,14 @@ def mia_vs_bn(exp, config) -> dict:
             f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
 
-        bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
-        bn_theta_ie = gum.LazyPropagation(bn_theta)
-
-        # ... retrieve rpop, ...
-        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
-
         # try:
 
         # ... and perform membership inference on gpop
         power_vec, auc = run_mia(
-            bn_theta_hat_ie,
-            bn_theta_ie,
-            rpop,
+            bn_theta_hat,
+            bn_theta,
             gpop,
-            gpop[f"in-pool-{sample}"],
+            sample,
             eval(config["error"]),
         )
         power_res[f"power_BN_sample{sample}"] = power_vec
@@ -108,21 +101,14 @@ def mia_vs_cn(exp, config) -> pd.DataFrame:
             f"{cur_dir}/{config['bns_path']}/rpop/bn_{exp}_sample{sample}.bif"
         )
 
-        bn_theta_hat_ie = gum.LazyPropagation(bn_theta_hat)
-        bn_theta_ie = gum.LazyPropagation(bn_theta)
-
-        # ... retrieve rpop, ...
-        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
-
         # try:
 
         # ... and perform membership inference on gpop
         power_vec, auc = run_mia(
-            bn_theta_hat_ie,
-            bn_theta_ie,
-            rpop,
+            bn_theta_hat,
+            bn_theta,
             gpop,
-            gpop[f"in-pool-{sample}"],
+            sample,
             eval(config["error"]),
         )
         power_res[f"power_CN_sample{sample}"] = power_vec
@@ -209,9 +195,6 @@ def find_epsilon(exp, config) -> dict:
             f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
 
-        # ... retrieve rpop, ...
-        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_theta.nodes())]
-
         # ... get CN AUC, ...
         auc_cn = auc_res.loc[auc_res["sample"] == sample, "auc_cn"].values[0]
 
@@ -226,16 +209,12 @@ def find_epsilon(exp, config) -> dict:
             scale = (2 * bn_theta_hat.size()) / (pool_ss * eps)
             bn_noisy = noisy_bn(bn_theta_hat, scale)
 
-            bn_noisy_ie = gum.LazyPropagation(bn_noisy)
-            bn_theta_ie = gum.LazyPropagation(bn_theta)
-
             # Perform membership inference on gpop
             power_vec, auc = run_mia(
-                bn_noisy_ie,
-                bn_theta_ie,
-                rpop,
+                bn_noisy,
+                bn_theta,
                 gpop,
-                gpop[f"in-pool-{sample}"],
+                sample,
                 eval(config["error"]),
             )
 
@@ -261,39 +240,53 @@ def find_epsilon(exp, config) -> dict:
 
 
 # MIA: membership inference attack
-def run_mia(model, baseline, rpop, gpop, ground_truth, error_vec):
+def run_mia(model, baseline, gpop, sample, error_vec):
 
-    # Compute llr(x) on reference and general populations
-    llr_ref = (
-        rpop.apply(lambda x: get_llr(x.to_dict(), baseline, model), axis=1)
+    # Create objects for inference
+    model_ie = gum.LazyPropagation(model)
+    baseline_ie = gum.LazyPropagation(baseline)
+
+    # Retrieve rpop and evaluation set (i.e. the rpop complement in gpop)
+    rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(model.nodes())]
+    eval_pop = gpop[~gpop[f"in-rpop-{sample}"]].iloc[:, : len(model.nodes())]
+    ground_truth = gpop[~gpop[f"in-rpop-{sample}"]].loc[:, f"in-pool-{sample}"]
+
+    # Compute llr(x)'s
+    llr_rpop = (
+        rpop.apply(lambda x: get_llr(x.to_dict(), baseline_ie, model_ie), axis=1)
         .dropna()
         .sort_values()
     )
-    llr_gen = gpop[[*rpop.columns]].apply(
-        lambda x: get_llr(x.to_dict(), baseline, model), axis=1
+    llr_eval = eval_pop.apply(
+        lambda x: get_llr(x.to_dict(), baseline_ie, model_ie), axis=1
     )
 
     power_vec = []
 
     # Get the power for each error
     for error in error_vec:
-        power = get_power(llr_ref, llr_gen, ground_truth, error)
+        power = get_power(llr_rpop, llr_eval, ground_truth, error)
         power_vec.append(power)
 
     # Compute and store AUC
     auc = metrics.auc(error_vec, power_vec)
 
+    # Debug
+    safe_assert(len(rpop) + len(eval_pop) == len(gpop))
+    safe_assert(len(eval_pop) == len(ground_truth))
+    safe_assert(len(power_vec) == len(error_vec))
+
     return power_vec, auc
 
 
 # Get the attack power related to a fixed error
-def get_power(llr_ref, llr_gen, ground_truth, error) -> float:
+def get_power(llr_ref, llr_eval, ground_truth, error) -> float:
 
     # Compute the threshold
     t = np.quantile(llr_ref, 1 - error).item()
 
     # Test: L(x) > t => reject H_0 => assign `x` to target_pop
-    y_pred = llr_gen > t
+    y_pred = llr_eval > t
 
     # Compute power (i.e., true positive rate)
     power = sum(ground_truth & y_pred) / sum(ground_truth)
