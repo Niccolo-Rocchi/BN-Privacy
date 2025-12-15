@@ -189,7 +189,7 @@ def mle_cset(vec_min, vec_max, counts) -> np.array:
     objective = cp.Maximize(counts @ cp.log(p))
 
     # Constraints
-    constraints = [cp.sum(p) == 1, p >= vec_min, p <= vec_max, p >= 10e-9]
+    constraints = [cp.sum(p) == 1, p >= np.maximum(vec_min, 10e-9), p <= vec_max]
 
     # Solve the optimization problem
     problem = cp.Problem(objective, constraints)

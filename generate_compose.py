@@ -5,15 +5,15 @@ import yaml
 # Set hyperparameters
 names = ["cn_privacy"]
 def_mecs = {
-    # "def_idm": {"ess": [1, 10, 100, 1000]},
-    "def_ran": {"delta": [0.1, 0.3, 0.5, 0.7, 1.0]}
+    "def_idm": {"ess": [1, 10, 100, 1000]},
+    "def_ran": {"delta": [0.1, 0.3, 0.5, 0.7, 0.9, 1.0]}
 }
 atk_mecs = {
     "atk_mle": {None: [None]},
-    # "atk_mne": {None: [None]},
-    # "atk_cen": {None: [None]},
-    # "atk_ran": {None: [None]},
-    # "atk_ent": {None: [None]},
+    "atk_mne": {None: [None]},
+    "atk_cen": {None: [None]},
+    "atk_ran": {None: [None]},
+    "atk_ent": {None: [None]},
 }
 
 # Initialize the `compose.yaml` file
@@ -63,6 +63,8 @@ for name, def_mec, atk_mec in product(names, def_mecs.keys(), atk_mecs.keys()):
             "build": ".",
             "volumes": volumes,
             "command": command,
+            "environment": {"PYTHONWARNINGS": "ignore"},    # Ignore Python warnings to control the size of container's log
+            "restart": "on-failure",                        # Restart the container if exited with non-zero status, useful when running out of RAM
         }
 # Print number of services
 print("Number of services: ", len(data["services"]))
