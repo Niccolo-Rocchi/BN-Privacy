@@ -5,7 +5,7 @@ import pandas as pd
 import pyagrum as gum
 
 from src.config import get_cur_dir, safe_assert, set_seed
-from src.utils import add_counts_to_bn, check_consistency
+from src.utils import add_counts_to_bn, check_consistency, get_min_max_bns
 
 
 # Apply defense mechanism to a BN, namely, derive a CN from a BN
@@ -94,6 +94,56 @@ def def_ran(bn, delta):
         safe_assert(np.all(cpt_min <= cpt))
         safe_assert(np.all(cpt_max >= cpt))
         safe_assert(np.all(np.abs(cpt_max - cpt_min - delta) < 1e-6))
+
+    # Build the CN from the extreme BNs
+    cn = gum.CredalNet(bn_min, bn_max)
+    cn.intervalToCredal()
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max))
+
+    return cn
+
+
+# Build a CN by DEF-RAN, where each delta is the size of the intrval under local-IDM
+def def_loc(bn, ess, data):
+
+    # Initialize the extreme BNs
+    bn_min = gum.BayesNet(bn)
+    bn_max = gum.BayesNet(bn)
+
+    # Learn a CN by local-IDM
+    cn_idm = def_idm(bn, ess, data)
+
+    # Extract min and max BNs
+    bn_min_idm, bn_max_idm = get_min_max_bns(
+        cn_idm, exp=f"{np.random.uniform(0, 1, 1)}"
+    )
+
+    # For each node ...
+    for n in bn.nodes():
+
+        # ... get the CPT, ...
+        cpt = bn.cpt(n).toarray()
+
+        # ... get the intervals lengths, ...
+        len_idm = bn_max_idm.cpt(n).toarray() - bn_min_idm.cpt(n).toarray()
+
+        # ... get a matrix of eta's, ...
+        eta = np.random.rand(*len_idm.shape) * len_idm
+
+        # ... perturb the CPT, ...
+        cpt_min = np.minimum(1 - len_idm, np.maximum(0, cpt - eta))
+        cpt_max = np.minimum(1, np.maximum(len_idm, cpt - eta + len_idm))
+
+        # ... and store it into the extreme BNs
+        bn_min.cpt(n).fillWith(cpt_min.flatten())
+        bn_max.cpt(n).fillWith(cpt_max.flatten())
+
+        # Debug
+        safe_assert(np.all(cpt_min <= cpt))
+        safe_assert(np.all(cpt_max >= cpt))
+        safe_assert(np.all(np.abs(cpt_max - cpt_min - len_idm) < 1e-5))
 
     # Build the CN from the extreme BNs
     cn = gum.CredalNet(bn_min, bn_max)

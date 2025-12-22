@@ -27,6 +27,14 @@ def test_def_idm_atk_mle(monkeypatch):
     exp.main()
 
 
+def test_def_loc_atk_mle(monkeypatch):
+
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_loc", "ess=1", "atk_mec=atk_mle"])
+
+    # Run experiment
+    exp.main()
+
+
 def test_def_ran_atk_mne(monkeypatch):
 
     monkeypatch.setattr(
@@ -40,6 +48,14 @@ def test_def_ran_atk_mne(monkeypatch):
 def test_def_idm_atk_mne(monkeypatch):
 
     monkeypatch.setattr(sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_mne"])
+
+    # Run experiment
+    exp.main()
+
+
+def test_def_loc_atk_mne(monkeypatch):
+
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_loc", "ess=1", "atk_mec=atk_mne"])
 
     # Run experiment
     exp.main()
@@ -63,6 +79,14 @@ def test_def_idm_atk_cen(monkeypatch):
     exp.main()
 
 
+def test_def_loc_atk_cen(monkeypatch):
+
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_loc", "ess=1", "atk_mec=atk_cen"])
+
+    # Run experiment
+    exp.main()
+
+
 def test_def_ran_atk_ran(monkeypatch):
 
     monkeypatch.setattr(
@@ -81,6 +105,14 @@ def test_def_idm_atk_ran(monkeypatch):
     exp.main()
 
 
+def test_def_loc_atk_ran(monkeypatch):
+
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_loc", "ess=1", "atk_mec=atk_ran"])
+
+    # Run experiment
+    exp.main()
+
+
 def test_def_ran_atk_ent(monkeypatch):
 
     monkeypatch.setattr(
@@ -94,6 +126,14 @@ def test_def_ran_atk_ent(monkeypatch):
 def test_def_idm_atk_ent(monkeypatch):
 
     monkeypatch.setattr(sys, "argv", ["def_mec=def_idm", "ess=1", "atk_mec=atk_ent"])
+
+    # Run experiment
+    exp.main()
+
+
+def test_def_loc_atk_ent(monkeypatch):
+
+    monkeypatch.setattr(sys, "argv", ["def_mec=def_loc", "ess=1", "atk_mec=atk_ent"])
 
     # Run experiment
     exp.main()

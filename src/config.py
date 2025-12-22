@@ -24,7 +24,7 @@ def map_sys_args(sys_args, config) -> tuple:
 
     # Get defense parameters
     def_args = dict()
-    if def_mec == "def_idm":
+    if def_mec in ["def_idm", "def_loc"]:
         def_args["ess"] = int(params.pop("ess"))
         assert def_args["ess"] >= 0
     elif def_mec == "def_ran":

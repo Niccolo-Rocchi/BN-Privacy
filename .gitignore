@@ -4,6 +4,7 @@ bns
 data
 plots
 *meta.txt
+compose.yaml
 bin
 __pycache__
 .pytest_cache

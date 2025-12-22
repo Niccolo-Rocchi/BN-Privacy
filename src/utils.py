@@ -278,6 +278,7 @@ def mne_cset(vec_min, vec_max, counts) -> np.array:
 
     return vec_best
 
+
 # Get a random BN inside a CN
 def ran_cn(bn_min, bn_max) -> gum.BayesNet:
 
