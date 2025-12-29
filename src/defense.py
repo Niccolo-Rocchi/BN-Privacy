@@ -5,7 +5,7 @@ import pandas as pd
 import pyagrum as gum
 
 from src.config import get_cur_dir, safe_assert, set_seed
-from src.utils import add_counts_to_bn, check_consistency, get_min_max_bns
+from src.utils import get_bn_counts, check_consistency, get_min_max_bns
 
 
 # Apply defense mechanism to a BN, namely, derive a CN from a BN
@@ -58,8 +58,7 @@ def defense_mechanism(exp, config, def_mec, def_args) -> None:
 
 # Estimate a CN from data by local IDM
 def def_idm(bn, ess, data):
-    bn_counts = gum.BayesNet(bn)
-    add_counts_to_bn(bn_counts, data)
+    bn_counts = get_bn_counts(bn, data)
     cn = gum.CredalNet(bn_counts)
     cn.idmLearning(ess)
 
@@ -100,7 +99,7 @@ def def_ran(bn, delta):
     cn.intervalToCredal()
 
     # Debug
-    safe_assert(check_consistency(bn, bn_min, bn_max))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     return cn
 
@@ -150,7 +149,7 @@ def def_loc(bn, ess, data):
     cn.intervalToCredal()
 
     # Debug
-    safe_assert(check_consistency(bn, bn_min, bn_max))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     return cn
 

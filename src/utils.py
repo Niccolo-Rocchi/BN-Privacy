@@ -11,25 +11,49 @@ import pyagrum as gum
 from src.config import safe_assert
 
 
-# Add counts of events to a BN
-def add_counts_to_bn(bn, data):
+# Create the BN storing the counts of events
+def get_bn_counts(bn, data):
 
+    # Init the BN
+    bn_counts = gum.BayesNet(bn)
+
+    # For each node ...
     for node in bn.names():
-        var = bn.variable(node)
-        parents = bn.parents(node)
-        parent_names = [bn.variable(p).name() for p in parents]
 
-        shape = [bn.variable(p).domainSize() for p in parents] + [var.domainSize()]
-        counts_array = np.zeros(shape, dtype=float)  # float, not int
+        # ... create the CPT storing counts of events
+        counts = []
 
-        for _, row in data.iterrows():
-            try:
-                key = tuple([int(row[p]) for p in parent_names] + [int(row[node])])
-                counts_array[key] += 1.0
-            except KeyError:
-                continue
+        n_parents = len(bn.parents(node))
+        if n_parents != 0:
+            cpt = bn.cpt(node).topandas().reset_index()
+            parents = [str(x[0]) for x in cpt.columns[:n_parents]]
+            cpt.columns = parents + list(cpt[node].columns)
+            domain = [int(x) for x in cpt.columns[n_parents:]]
 
-        bn.cpt(node).fillWith(counts_array.flatten().tolist())
+            for idx in range(len(cpt)):
+                counts_cond = []
+                query = dict(cpt.iloc[idx, :n_parents])
+                query_str = " & ".join([f"{k}=={v}" for k,v in query.items()])
+                data_cond = data.query(query_str)
+                for node_val in domain:
+                    counts_cond.append(len(data_cond[data_cond[node] == node_val]))
+                counts.append(counts_cond)
+
+                # Debug
+                safe_assert(sum(counts_cond) == len(data_cond))
+
+        else:
+            domain = [x[1] for x in bn.cpt(node).topandas().index]
+            for node_val in domain:
+                    counts.append(len(data[data[node] == node_val]))
+
+        counts = np.array(counts).flatten()
+        bn_counts.cpt(node).fillWith(counts.tolist())
+
+        # Debug
+        safe_assert(sum(counts) == len(data))
+
+    return bn_counts
 
 
 # Get the BN inside a CN with max entropy distribution
@@ -48,7 +72,7 @@ def maxent_cn(bn_min, bn_max) -> gum.BayesNet:
         bn.cpt(var).fillWith(cpt.flatten())
 
     # Debug
-    safe_assert(check_consistency(bn, bn_min, bn_max))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     return bn
 
@@ -134,8 +158,7 @@ def mle_cn(bn_min, bn_max, data) -> gum.BayesNet:
     bn = gum.BayesNet(bn_min)
 
     # Store counts
-    bn_counts = gum.BayesNet(bn)
-    add_counts_to_bn(bn_counts, data)
+    bn_counts = get_bn_counts(bn, data)
 
     # For each variable ...
     for var in bn.names():
@@ -147,7 +170,7 @@ def mle_cn(bn_min, bn_max, data) -> gum.BayesNet:
         bn.cpt(var).fillWith(cpt.flatten())
 
     # Debug
-    safe_assert(check_consistency(bn, bn_min, bn_max))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     return bn
 
@@ -210,8 +233,7 @@ def mne_cn(bn_min, bn_max, data) -> gum.BayesNet:
     bn = gum.BayesNet(bn_min)
 
     # Store counts
-    bn_counts = gum.BayesNet(bn)
-    add_counts_to_bn(bn_counts, data)
+    bn_counts = get_bn_counts(bn, data)
 
     # For each variable ...
     for var in bn.names():
@@ -223,7 +245,7 @@ def mne_cn(bn_min, bn_max, data) -> gum.BayesNet:
         bn.cpt(var).fillWith(cpt.flatten())
 
     # Debug
-    safe_assert(check_consistency(bn, bn_min, bn_max))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     return bn
 
@@ -295,7 +317,7 @@ def ran_cn(bn_min, bn_max) -> gum.BayesNet:
         bn.cpt(var).fillWith(cpt.flatten())
 
     # Debug
-    safe_assert(check_consistency(bn, bn_min, bn_max))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     return bn
 
@@ -360,7 +382,7 @@ def centroid_cn(bn_min, bn_max) -> gum.BayesNet:
         bn.cpt(var).fillWith(cpt.flatten())
 
     # Debug
-    safe_assert(check_consistency(bn, bn_min, bn_max))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     return bn
 
@@ -464,7 +486,7 @@ def sample_from_cn(bn_min, bn_max, n_bns: int) -> list:
         bns.append(bn)
 
         # Debug
-        safe_assert(check_consistency(bn, bn_min, bn_max))
+        safe_assert(check_consistency(bn, bn_min, bn_max)==0)
 
     # Debug
     safe_assert(len(cpts_dict) == len(dag.names()))
@@ -549,8 +571,10 @@ def sample_from_cset(vec_min, vec_max, n_bns) -> list:
     return constrained_samples
 
 
-# Check the consistency of a BN as sampled from a CN
-def check_consistency(bn, bn_min, bn_max) -> bool:
+# Check the consistency of a BN as sampled from a CN. Returns the number of inconsistent CPTs.
+def check_consistency(bn, bn_min, bn_max, verbose=False) -> int:
+
+    n_issues = 0
 
     for var in bn.names():
         bn_cpt = np.atleast_2d(bn.cpt(var).topandas())
@@ -572,13 +596,22 @@ def check_consistency(bn, bn_min, bn_max) -> bool:
         if consistency:
             continue
         else:
-            print("probability_consistency: ", probability_consistency)
-            print("min_consistency: ", min_consistency)
-            print("max_consistency: ", max_consistency)
-            print(bn_cpt, bn_min_cpt, bn_max_cpt)
-            return False
+            n_issues += 1
+            if verbose:
+                print("Variable: ", var)
+                print("probability_consistency: ", probability_consistency)
+                print("min_consistency: ", min_consistency)
+                print("max_consistency: ", max_consistency)
+                print("BN CPT: ")
+                print(bn_cpt)
+                print("BN min CPT: ")
+                print(bn_min_cpt)
+                print("BN max CPT: ")
+                print(bn_max_cpt)
+    
+    return n_issues
 
-    return True
+    
 
 
 # Check BNs sampled from a CN
@@ -625,8 +658,7 @@ def generate_random_cn(n_nodes, edge_density, n_modmax, ess, s_size) -> tuple:
     data = data_gen.to_pandas()
 
     # Learn the CN by local IDM
-    bn_counts = gum.BayesNet(bn)
-    add_counts_to_bn(bn_counts, data)
+    bn_counts = get_bn_counts(bn, data)
     cn = gum.CredalNet(bn_counts)
     cn.idmLearning(ess)
 
