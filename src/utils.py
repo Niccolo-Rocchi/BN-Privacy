@@ -289,7 +289,7 @@ def mne_cset(vec_min, vec_max, counts) -> np.array:
     for row in range(vertices.shape[0]):
 
         vec = vertices[row, :]
-        mne = counts @ -np.log(np.where(vec_best > 0, vec_best, 1))
+        mne = counts @ -np.log(np.where(vec > 0, vec, 1))
 
         if mne > mne_best:
             mne_best = mne
