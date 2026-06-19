@@ -1,30 +1,35 @@
+import ast
 from itertools import product
-from pprint import pformat
 
+import numpy as np
+import pandas as pd
 import pyagrum as gum
+from numpy.random import randint
 
-from src.config import create_clean_dir, get_base_path, set_global_seed
-from src.utils import compact_dict
+from src.config import get_cur_dir, safe_assert, set_seed
 
 
 def generate_naivebayes(config):
 
-    # Set seed
-    set_global_seed(config["seed"])
-
     # Set paths
-    base_path = get_base_path(config)
-    bns_path = base_path / config["bns_path"]
-    data_path = base_path / config["data_path"]
-    results_path = base_path / config["results_path"]
+    cur_dir = get_cur_dir(config)
+    bns_path = cur_dir / config["bns_path"]
+    data_path = cur_dir / config["data_path"]
 
-    # Create empty directories
-    create_clean_dir(bns_path)
-    create_clean_dir(data_path)
-    create_clean_dir(results_path)
+    # Set seed
+    set_seed()
 
-    # Set BN (Naive Bayes) structure
-    bn_str_gen = (f'{config["target_var"]}->X{i}' for i in range(config["n_nodes"] - 1))
+    # Retrieve hyperparameters
+    n_modmax = config["n_modmax"]
+    gpop_ss = config["gpop_ss"]
+    pool_ss = int(gpop_ss * config["pool_prop"])
+    rpop_ss = int(gpop_ss * config["rpop_prop"])
+
+    # Set BN (naive Bayes) structure
+    bn_str_gen = (
+        f'{config["target_var"]}->X{i}[{randint(2, n_modmax+1)}]'
+        for i in range(config["n_nodes"] - 1)
+    )
     bn_str = "; ".join(bn_str_gen)
 
     # For each model ...
@@ -32,66 +37,125 @@ def generate_naivebayes(config):
 
         # ... generate BN, ...
         bn = gum.fastBN(bn_str)
-        gum.saveBN(bn, f"{bns_path}/exp{i}.bif")
+        gum.saveBN(bn, f'{bns_path / "gt"}/{f"exp{i}"}.bif')
+
+        with open(f'{cur_dir}/{config["exp_meta"]}', "a") as m:
+            m.write(
+                f'- exp{i}. Naive Bayes: {config["n_nodes"]} nodes. Complexity: {bn.dim()} Max categories: {n_modmax}\n'
+            )
 
         # ... and generate gpop from BN
-        data_gen = gum.BNDatabaseGenerator(bn)
-        data_gen.drawSamples(config["gpop_ss"])
-        data_gen.setDiscretizedLabelModeRandom()
-        gpop = data_gen.to_pandas()
+        gpop = generate_unique(bn, config["gpop_ss"])
+
+        # For any data sample ...
+        for sample in range(config["samples"]):
+
+            # ... sample pool and rpop
+            shuffled_idx = np.random.permutation(gpop.index)
+
+            pool_idx = shuffled_idx[:pool_ss]
+            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
+
+            gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+            gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)
+
+            # Debug
+            safe_assert(pool_ss == len(pool_idx))
+            safe_assert(rpop_ss == len(rpop_idx))
+            safe_assert(sum(gpop[f"in-pool-{sample}"]) == pool_ss)
+            safe_assert(sum(gpop[f"in-rpop-{sample}"]) == rpop_ss)
+            safe_assert(sum(gpop[f"in-pool-{sample}"] & gpop[f"in-rpop-{sample}"]) == 0)
+            safe_assert(
+                sum(~gpop[f"in-pool-{sample}"] & ~gpop[f"in-rpop-{sample}"]) == gpop_ss - pool_ss - rpop_ss
+            )
+
+        # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
-
-    # For each ESS ...
-    for ess in config["ess_dict"].keys():
-
-        # ... create results subdirectories and metadata files
-        meta_file_path = (
-            base_path
-            / config["results_path"]
-            / f'results_nodes{config["n_nodes"]}_ess{ess}'
-            / config["meta_file"]
-        )
-        meta_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(meta_file_path, "w") as f:
-            f.write(pformat(compact_dict(config)) + "\n\n" + "#" * 50 + "\n\n")
 
 
 def generate_randombn(config):
 
-    # Set seed
-    set_global_seed(config["seed"])
-
     # Set paths
-    base_path = get_base_path(config)
-    bns_path = base_path / config["bns_path"]
-    data_path = base_path / config["data_path"]
-    results_path = base_path / config["results_path"]
+    cur_dir = get_cur_dir(config)
+    bns_path = cur_dir / config["bns_path"]
+    data_path = cur_dir / config["data_path"]
 
-    # Create empty directories
-    create_clean_dir(bns_path)
-    create_clean_dir(data_path)
-    create_clean_dir(results_path)
+    # Retrieve hyperparameters
+    n_nodes_vec = ast.literal_eval(config["n_nodes_vec"])
+    edge_ratio_vec = ast.literal_eval(config["edge_ratio_vec"])
+    gpop_ss = config["gpop_ss"]
+    pool_ss = int(gpop_ss * config["pool_prop"])
+    rpop_ss = int(gpop_ss * config["rpop_prop"])
 
-    n_nodes_vec = eval(config["n_nodes_vec"])
-    edge_ratio_vec = eval(config["edge_ratio_vec"])
+    # Set seed
+    set_seed()
 
     # For each configuration ...
     for i, (n, r) in enumerate(product(n_nodes_vec, edge_ratio_vec)):
 
         # ... generate BN, ...
         bn_gen = gum.BNGenerator()
-        bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=2)
-        gum.saveBN(bn, f"{bns_path}/exp{i}.bif")
+        bn = bn_gen.generate(n_nodes=n, n_arcs=int(n * r), n_modmax=config["n_modmax"])
+        gum.saveBN(bn, f'{bns_path / "gt"}/{f"exp{i}"}.bif')
 
-        with open(f'{results_path}/{config["meta_file"]}', "a") as m:
+        with open(f'{cur_dir}/{config["exp_meta"]}', "a") as m:
             m.write(
                 f"- exp{i}. Nodes: {n} Edges: {int(n * r)} Complexity: {bn.dim()}\n"
             )
 
         # ... and generate gpop from BN
-        data_gen = gum.BNDatabaseGenerator(bn)
-        data_gen.drawSamples(config["gpop_ss"])
-        data_gen.setDiscretizedLabelModeRandom()
-        gpop = data_gen.to_pandas()
+        gpop = generate_unique(bn, config["gpop_ss"])
+
+        # For any data sample ...
+        for sample in range(config["samples"]):
+
+            # ... sample pool and rpop
+            shuffled_idx = np.random.permutation(gpop.index)
+
+            pool_idx = shuffled_idx[:pool_ss]
+            rpop_idx = shuffled_idx[pool_ss : pool_ss + rpop_ss]
+
+            gpop[f"in-pool-{sample}"] = gpop.index.isin(pool_idx)
+            gpop[f"in-rpop-{sample}"] = gpop.index.isin(rpop_idx)
+
+            # Debug
+            safe_assert(pool_ss == len(pool_idx))
+            safe_assert(rpop_ss == len(rpop_idx))
+            safe_assert(sum(gpop[f"in-pool-{sample}"]) == pool_ss)
+            safe_assert(sum(gpop[f"in-rpop-{sample}"]) == rpop_ss)
+            safe_assert(sum(gpop[f"in-pool-{sample}"] & gpop[f"in-rpop-{sample}"]) == 0)
+            safe_assert(
+                sum(~gpop[f"in-pool-{sample}"] & ~gpop[f"in-rpop-{sample}"]) == gpop_ss - pool_ss - rpop_ss
+            )
+
+        # Save gpop
         gpop.to_csv(f"{data_path}/exp{i}.csv", index=False)
+
+
+# Generate unique data points from a given BN
+def generate_unique(bn: gum.BayesNet, n_samples: int) -> pd.DataFrame:
+
+    # Generate data
+    data_gen = gum.BNDatabaseGenerator(bn)
+    data_gen.drawSamples(n_samples * 2)
+    data = data_gen.to_pandas()
+
+    # Ensure data items are unique
+    data_unique = data.drop_duplicates()
+    check = 0
+    while len(data_unique) < n_samples:
+        data_gen.drawSamples((n_samples - len(data_unique)) * 5)
+        data = data_gen.to_pandas()
+        data_unique = pd.concat([data_unique, data], axis=0).drop_duplicates()
+        check += 1
+        if check >= 1e6:
+            raise ValueError(
+                "Too many iterations, please check the data hyperparameters."
+            )
+    data_unique = data_unique.sample(n=n_samples, ignore_index=True)
+
+    # Debug
+    safe_assert(all(data_unique == data_unique.drop_duplicates()))
+    safe_assert(len(data_unique) == n_samples)
+
+    return data_unique

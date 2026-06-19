@@ -1,5 +1,4 @@
 venv
-output
-bin
-__pycache__
-.pytest_cache
+**/output
+**/__pycache__
+**/.pytest_cache

@@ -1,168 +1,621 @@
-import io
-import re
-from collections import defaultdict
-from contextlib import redirect_stdout
+from fractions import Fraction
+from tempfile import TemporaryDirectory
 
+import cdd
+import cdd.gmp
+import cvxpy as cp
+import hopsy
 import numpy as np
 import pyagrum as gum
-from more_itertools import random_product
-from numpy import random
-from numpy.random import random_sample
+
+from src.config import safe_assert
 
 
-# Log-likelihood function
-def get_ll(x: dict, theta):
+# Create the BN storing the counts of events
+def get_bn_counts(bn, data):
 
-    # Erase all evidences and apply addEvidence(key,value) for every pairs in x
-    theta.setEvidence(x)
+    # Init the BN
+    bn_counts = gum.BayesNet(bn)
 
-    # Compute P(x | theta)
-    ll = theta.evidenceProbability()
+    # For each node ...
+    for node in bn.names():
 
-    return np.log(ll)
+        # ... create the CPT storing counts of events
+        counts = []
 
+        n_parents = len(bn.parents(node))
+        if n_parents != 0:
+            cpt = bn.cpt(node).topandas().reset_index()
+            parents = [str(x[0]) for x in cpt.columns[:n_parents]]
+            cpt.columns = parents + list(cpt[node].columns)
+            domain = [int(x) for x in cpt.columns[n_parents:]]
 
-# Log-likelihood ratio (llr) function
-def get_llr(x: dict, theta, theta_hat):
+            for idx in range(len(cpt)):
+                counts_cond = []
+                query = dict(cpt.iloc[idx, :n_parents])
+                query_str = " & ".join([f"{k}=={v}" for k,v in query.items()])
+                data_cond = data.query(query_str)
+                for node_val in domain:
+                    counts_cond.append(len(data_cond[data_cond[node] == node_val]))
+                counts.append(counts_cond)
 
-    # Compute log-likelihoods
-    ll_theta = get_ll(x, theta)
-    ll_theta_hat = get_ll(x, theta_hat)
+                # Debug
+                safe_assert(sum(counts_cond) == len(data_cond))
 
-    return ll_theta_hat - ll_theta
+        else:
+            domain = [x[1] for x in bn.cpt(node).topandas().index]
+            for node_val in domain:
+                    counts.append(len(data[data[node] == node_val]))
 
+        counts = np.array(counts).flatten()
+        bn_counts.cpt(node).fillWith(counts.tolist())
 
-# Parse the credal network
-def parse_cn(cn) -> tuple:
+        # Debug
+        safe_assert(sum(counts) == len(data))
 
-    # Get the DAG
-    dag = gum.BayesNet(cn.current_bn())
-
-    # Cast CN to string
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        print(cn)
-    cn_str = buffer.getvalue()
-
-    credal_dict = defaultdict(lambda: defaultdict(list))
-    current_var = None
-
-    lines = cn_str.strip().split("\n")
-
-    for line in lines:
-        line = line.strip()
-
-        # Variable identification
-        var_match = re.match(r"^([A-Za-z0-9_]+):", line)
-        if var_match:
-            current_var = var_match.group(1)
-            continue
-
-        if current_var is None or not line:
-            continue
-
-        # CPT identification
-        cpt_match = re.match(r"^<([^>]*)>\s*:\s*(.*)", line)
-        if cpt_match:
-            condition = f"<{cpt_match.group(1).strip()}>"
-            raw_cpt = cpt_match.group(2)
-
-            # Extraction of inner lists: [[x,x,x], [x,x,x], ...]
-            vectors = re.findall(r"\[\s*([^\[\]]+?)\s*\]", raw_cpt)
-            for vec in vectors:
-                prob_vec = [float(x.strip()) for x in vec.split(",")]
-                credal_dict[current_var][condition].append(prob_vec)
-
-    params = []
-    for var in credal_dict:
-        for cond, vectors in credal_dict[var].items():
-            params.append((var, cond, vectors))
-
-    return dag, params
+    return bn_counts
 
 
-# Compute a random subset of BNs from the CN
-def sample_from_cn(cn, n: int, where: str) -> list:
-    """
-    Sample random BNs from the CN.
+# Get the BN inside a CN with max entropy distribution
+def maxent_cn(bn_min, bn_max) -> gum.BayesNet:
 
-    Parameters:
-    - `cn`: the given CN.
-    - `n`: number of BNs to extract from the CN.
-    - `where`: can be `inside` or `outside`.
-        "inside": the BNs are taken from within the credal set;
-        "outside": the BNs are vertices of the credal set.
-    """
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
 
-    random.seed(42)
+    # For each variable ...
+    for var in bn.names():
 
-    # Parse CN
-    dag, params = parse_cn(cn)
+        # ... get the maxent CPT, ...
+        cpt = maxent_cpt(bn_min.cpt(var), bn_max.cpt(var))
 
-    # Store variables indexes
-    var_idx = {
-        var: [idx for idx, elem in enumerate(params) if elem[0] == var]
-        for var in dag.names()
-    }
-
-    # Cases
-    if where == "inside":
-        sample = sample_inside
-    elif where == "outside":
-        sample = sample_outside
-    else:
-        msg = "'where' can be either 'inside' or 'outside'"
-        print(msg)
-        raise ValueError(msg)
-
-    # Draw n random BNs
-    k = 0
-    bns = []
-    while k < n:
-
-        # Init an empty BN
-        bn = gum.BayesNet(dag)
-
-        # Sample from CN
-        next_sample = next(sample(params))
-
-        # Fill the BN's CPTs
-        for var in dag.names():
-            array = np.array([(next_sample[idx]) for idx in var_idx.get(var)]).flatten()
-            bn.cpt(var).fillWith(array)
-
-        bns.append(bn)
-        k += 1
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
 
     # Debug
-    # assert(n == len(bns))
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
+
+    return bn
+
+
+# Get the BN CPT inside a CN CPT with max entropy distribution
+def maxent_cpt(cpt_min, cpt_max) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the maxent credal set, ...
+        c = maxent_cset(cpt_min[row, :], cpt_max[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the max-entropy distribution inside a credal set
+def maxent_cset(vec_min, vec_max) -> np.array:
+
+    rank = {v: k for k, v in enumerate(sorted(set(vec_min)))}
+    vec_order = np.array([rank[val] for val in vec_min])
+    s = 1 - np.sum(vec_min)
+    out = vec_min
+
+    while s > 0:
+        idx0 = np.where(vec_order == 0)[0]
+        idx1 = np.where(vec_order == 1)[0]
+        idx0_len = len(idx0)
+        idx1_len = len(idx1)
+
+        if idx1_len != 0:
+            diff = out[idx1[0]] - out[idx0[0]]
+            s_cond = s / idx0_len < diff
+            mat = np.stack(
+                [
+                    (
+                        (s / idx0_len) * np.ones(len(idx0))
+                        if s_cond
+                        else diff * np.ones(len(idx0))
+                    ),
+                    vec_max[idx0] - out[idx0],
+                ]
+            )
+        else:
+            s_cond = True
+            mat = np.stack(
+                [(s / idx0_len) * np.ones(len(idx0)), vec_max[idx0] - out[idx0]]
+            )
+
+        mat_min = np.min(mat)
+        q = np.argwhere(mat == mat_min)
+
+        if np.any(q[:, 0] == 1):
+            if len(idx0) > len(q):
+                vec_order[~np.isin(np.arange(len(out)), idx0[q[:, 1]])] += 1
+        elif not s_cond:
+            vec_order[idx0[q[:, 1]]] += 1
+
+        out[idx0] += mat_min
+        s -= mat_min * len(idx0)
+        vec_order -= 1
+
+    return out
+
+
+# Get the max likelihood BN inside a CN
+def mle_cn(bn_min, bn_max, data) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # Store counts
+    bn_counts = get_bn_counts(bn, data)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get the MLE CPT, ...
+        cpt = mle_cpt(bn_min.cpt(var), bn_max.cpt(var), bn_counts.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
+
+    return bn
+
+
+# Get the max likelihood BN CPT inside a CN CPT
+def mle_cpt(cpt_min, cpt_max, cpt_counts) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+    cpt_counts = np.atleast_2d(cpt_counts.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the MLE credal set, ...
+        c = mle_cset(cpt_min[row, :], cpt_max[row, :], cpt_counts[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the max likelihood distribution inside a credal set
+def mle_cset(vec_min, vec_max, counts) -> np.array:
+
+    # Number of variables to optimize
+    n_par = len(vec_min)
+    p = cp.Variable(n_par)
+
+    # Log-likelihood to maximize
+    objective = cp.Maximize(counts @ cp.log(p))
+
+    # Constraints
+    constraints = [cp.sum(p) == 1, p >= np.maximum(vec_min, 10e-9), p <= vec_max]
+
+    # Solve the optimization problem
+    problem = cp.Problem(objective, constraints)
+    problem.solve(verbose=False)
+
+    mle_vec = np.array(p.value)
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return mle_vec
+
+
+# Get the max (-likelihood) BN (MNE) within a CN, i.e., the min likelihood BN.
+def mne_cn(bn_min, bn_max, data) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # Store counts
+    bn_counts = get_bn_counts(bn, data)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get the MNE CPT, ...
+        cpt = mne_cpt(bn_min.cpt(var), bn_max.cpt(var), bn_counts.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
+
+    return bn
+
+
+# Get the MNE BN CPT inside a CN CPT
+def mne_cpt(cpt_min, cpt_max, cpt_counts) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+    cpt_counts = np.atleast_2d(cpt_counts.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the MNE credal set, ...
+        c = mne_cset(cpt_min[row, :], cpt_max[row, :], cpt_counts[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the MNE distribution inside a credal set
+def mne_cset(vec_min, vec_max, counts) -> np.array:
+
+    # Get the credal set vertices
+    vertices = vertices_cset(vec_min, vec_max)
+
+    # Get the vertex that has the maximum (-likelihood)
+    vec_best = vertices[0, :]
+    mne_best = counts @ -np.log(np.where(vec_best > 0, vec_best, 1))
+
+    for row in range(vertices.shape[0]):
+
+        vec = vertices[row, :]
+        mne = counts @ -np.log(np.where(vec > 0, vec, 1))
+
+        if mne > mne_best:
+            mne_best = mne
+            vec_best = vec
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return vec_best
+
+
+# Get a random BN inside a CN
+def ran_cn(bn_min, bn_max) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get a random CPT, ...
+        cpt = ran_cpt(bn_min.cpt(var), bn_max.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
+
+    return bn
+
+
+# Get a random BN CPT inside a CN CPT
+def ran_cpt(cpt_min, cpt_max) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... sample randomly from the credal set, ...
+        c = ran_cset(cpt_min[row, :], cpt_max[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get a random distribution inside a credal set
+def ran_cset(vec_min, vec_max) -> np.array:
+
+    # Get the credal set vertices
+    vertices = vertices_cset(vec_min, vec_max)
+
+    # Sample weights for vertices
+    n = len(vertices)
+    w = np.random.dirichlet(np.ones(n))
+
+    # Draw the linear combination of vertices
+    ran_vec = w @ vertices
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return ran_vec
+
+
+# Get the centroid of a CN
+def centroid_cn(bn_min, bn_max) -> gum.BayesNet:
+
+    # Init an empty BN
+    bn = gum.BayesNet(bn_min)
+
+    # For each variable ...
+    for var in bn.names():
+
+        # ... get the centroid CPT, ...
+        cpt = centroid_cpt(bn_min.cpt(var), bn_max.cpt(var))
+
+        # ... and fill the BN
+        bn.cpt(var).fillWith(cpt.flatten())
+
+    # Debug
+    safe_assert(check_consistency(bn, bn_min, bn_max)==0)
+
+    return bn
+
+
+# Get the centroid of a CN CPT
+def centroid_cpt(cpt_min, cpt_max) -> np.array:
+
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # For each row in the CPT ...
+    cpt = []
+    for row in range(cpt_min.shape[0]):
+
+        # ... get the centroid credal set, ...
+        c = centroid_cset(cpt_min[row, :], cpt_max[row, :])
+        cpt.append(c)
+
+    # Reshape the CPT
+    cpt = np.array(cpt)
+
+    # Debug
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(cpt.shape == cpt_min.shape)
+
+    return cpt
+
+
+# Get the centroid of a credal set as the average of its extreme points
+def centroid_cset(vec_min, vec_max) -> np.array:
+
+    # Get the credal set vertices
+    vertices = vertices_cset(vec_min, vec_max)
+
+    # Compute the centroid as the average across extreme points
+    centroid = np.sum(vertices, axis=0) / len(vertices)
+
+    # Debug
+    safe_assert(len(vec_min) == len(vec_max))
+
+    return centroid
+
+
+# Get the credal set vertices
+def vertices_cset(vec_min, vec_max) -> np.array:
+
+    # Define the (in)equalities (i.e., get the H-representation of the credal set)
+    n_par = len(vec_min)
+    A = np.concatenate(
+        (-np.eye(n_par), np.eye(n_par), np.atleast_2d(np.ones(n_par))), axis=0
+    )
+    b = np.concatenate((vec_max, -vec_min, np.atleast_1d(-1))).reshape(len(A), 1)
+    bA = np.concatenate((b, A), axis=1)
+    bA_frac = np.array(
+        [[Fraction(x).limit_denominator() for x in row] for row in bA], dtype=object
+    )  # Needed for numerical stability
+    mat_frac = cdd.gmp.matrix_from_array(
+        array=bA_frac, rep_type=cdd.RepType.INEQUALITY, lin_set=set([len(A) - 1])
+    )
+
+    # Get the polytope and extreme points. Each point is a row of the matrix `vertices`
+    poly_frac = cdd.gmp.polyhedron_from_matrix(mat_frac)
+    ext_frac = cdd.gmp.copy_generators(poly_frac)
+    vertices_frac = np.array(ext_frac.array)[:, 1:]
+    vertices = np.array([[float(x) for x in row] for row in vertices_frac], dtype=float)
+
+    # Debug
+    safe_assert(len(b) == 2 * len(vec_min) + 1)
+    safe_assert(A.shape == (len(b), len(vec_min)))
+    safe_assert(bA.shape == (2 * len(vec_min) + 1, len(vec_min) + 1))
+    safe_assert(vertices.shape[1] == n_par)
+
+    return vertices
+
+
+# BNs sampler from a CN
+def sample_from_cn(bn_min, bn_max, n_bns: int) -> list:
+
+    # Get the DAG and extreme BNs
+    dag = gum.BayesNet(bn_min)
+
+    # For each variable ...
+    cpts_dict = {}
+    for var in dag.names():
+
+        # ... sample `n_bns` CPTs from the CN
+        cpts_dict[var] = sample_from_cpts(bn_min.cpt(var), bn_max.cpt(var), n_bns)
+
+    # For each sample ...
+    bns = []
+    for i in range(n_bns):
+
+        # ... init an empty BN ...
+        bn = gum.BayesNet(dag)
+
+        # ... and fill its CPTs
+        for var in dag.names():
+            bn.cpt(var).fillWith(cpts_dict[var][i])
+
+        bns.append(bn)
+
+        # Debug
+        safe_assert(check_consistency(bn, bn_min, bn_max)==0)
+
+    # Debug
+    safe_assert(len(cpts_dict) == len(dag.names()))
+    safe_assert(len(bns) == n_bns)
 
     return bns
 
 
-# Given a parsed CN called `params`, sample a BN inside the credal set
-def sample_inside(params):
+# Sample from two extreme CPTs
+def sample_from_cpts(cpt_min, cpt_max, n_bns) -> list:
 
-    p_1 = [
-        (vecs[0][0] - vecs[1][0]) * random_sample() + vecs[1][0]
-        for _, _, vecs in params
-    ]
-    p = [[x, 1 - x] for x in p_1]
+    # Transform CPTs into pandas dataframes
+    cpt_min = np.atleast_2d(cpt_min.topandas())
+    cpt_max = np.atleast_2d(cpt_max.topandas())
+
+    # For each row in the CPT ...
+    credal_dict = {}
+    for row in range(cpt_min.shape[0]):
+
+        # ... sample `n_bns` points from the credal set
+        credal_dict[row] = sample_from_cset(cpt_min[row, :], cpt_max[row, :], n_bns)
+
+    # For each sample ...
+    cpt_samples = []
+    for i in range(n_bns):
+
+        # ... build the CPT
+        cpt = []
+        for row in range(cpt_min.shape[0]):
+            cpt.append(credal_dict[row][i])
+
+        cpt = np.array(cpt).flatten()
+        cpt_samples.append(cpt)
 
     # Debug
-    # assert(np.sum(np.array(p), axis=1).all() == 1.)
+    safe_assert(cpt_min.shape == cpt_max.shape)
+    safe_assert(len(credal_dict) == cpt_min.shape[0])
+    safe_assert(len(cpt_samples) == n_bns)
 
-    yield p
+    return cpt_samples
 
 
-# Given a parsed CN called `params`, sample a vertex of the credal set
-def sample_outside(params):
+# Sample from a credal set K(x | pi_x), i.e., a constrained polytope.
+def sample_from_cset(vec_min, vec_max, n_bns) -> list:
+    """
+    We assume a credal set is a polytope in a space of #X parameters, defined by a:
+     - Multi-dimensional rectangle, i.e., inequality constraint Ax <= b, and
+     - Hyperplane (provided all the variables sum up to 1), i.e., equality constraint A_eq x = b_eq.
+    This is true if the CN has been learnt by local IDM, for instance.
+    """
 
-    yield random_product(*[vecs for _, _, vecs in params])
+    # Define the rectangle
+    n_par = len(vec_min)
+    A = np.concatenate((np.eye(n_par), -np.eye(n_par)), axis=0)
+    b = np.concatenate((vec_max, -vec_min))
+    rectangle = hopsy.Problem(A=A, b=b)
+
+    # Define the hyperplane
+    A_eq = np.array([np.ones(n_par)])
+    b_eq = np.array([1.0])
+
+    # Define the polytope as a constrained rectangle (i.e., get the H-representation of the credal set)
+    constrained_rectangle = hopsy.add_equality_constraints(
+        rectangle, A_eq=A_eq, b_eq=b_eq
+    )
+
+    # Sample from the polytope
+    mc = hopsy.MarkovChain(constrained_rectangle)
+    rng = hopsy.RandomNumberGenerator(42)
+    _, constrained_samples = hopsy.sample(mc, rng, n_bns, thinning=10)
+    constrained_samples = constrained_samples[0]
+
+    # Debug
+    safe_assert(np.all(vec_min <= vec_max))
+    safe_assert(n_par == len(vec_max))
+    safe_assert(n_par == A.shape[1])
+    safe_assert(n_par == A_eq.shape[1])
+    safe_assert(len(constrained_samples) == n_bns)
+    for i in constrained_samples:
+        safe_assert(len(i) == n_par)
+
+    return constrained_samples
+
+
+# Check the consistency of a BN as sampled from a CN. Returns the number of inconsistent CPTs.
+def check_consistency(bn, bn_min, bn_max, verbose=False) -> int:
+
+    n_issues = 0
+
+    for var in bn.names():
+        bn_cpt = np.atleast_2d(bn.cpt(var).topandas())
+        bn_min_cpt = np.atleast_2d(bn_min.cpt(var).topandas())
+        bn_max_cpt = np.atleast_2d(bn_max.cpt(var).topandas())
+
+        # Check if probabilities sum to 1
+        sum_vec = np.sum(bn_cpt, axis=1)
+        probability_consistency = np.all(np.abs(sum_vec - 1) < 1e-5)
+
+        # Check if the BN CPT is >= min CPT
+        min_consistency = np.all(bn_cpt - bn_min_cpt >= -1e-5)
+
+        # Check if the BN CPT is <= max CPT
+        max_consistency = np.all(bn_cpt - bn_max_cpt <= 1e-5)
+
+        consistency = probability_consistency and min_consistency and max_consistency
+
+        if consistency:
+            continue
+        else:
+            n_issues += 1
+            if verbose:
+                print("Variable: ", var)
+                print("probability_consistency: ", probability_consistency)
+                print("min_consistency: ", min_consistency)
+                print("max_consistency: ", max_consistency)
+                print("BN CPT: ")
+                print(bn_cpt)
+                print("BN min CPT: ")
+                print(bn_min_cpt)
+                print("BN max CPT: ")
+                print(bn_max_cpt)
+    
+    return n_issues
+
+    
 
 
 # Check BNs sampled from a CN
-def are_all_bns_different(bn_vec) -> None:
+def are_all_bns_different(bn_vec) -> bool:
 
     signatures = set()
     for bn in bn_vec:
@@ -176,70 +629,37 @@ def are_all_bns_different(bn_vec) -> None:
 
     print(f"({len(signatures)}/{len(bn_vec)} different BNs.)")
 
-
-# Add counts of events to a BN
-def add_counts_to_bn(bn, data):
-
-    for node in bn.names():
-        var = bn.variable(node)
-        parents = bn.parents(node)
-        parent_names = [bn.variable(p).name() for p in parents]
-
-        shape = [bn.variable(p).domainSize() for p in parents] + [var.domainSize()]
-        counts_array = np.zeros(shape, dtype=float)  # float, not int
-
-        for _, row in data.iterrows():
-            try:
-                key = tuple([int(row[p]) for p in parent_names] + [int(row[node])])
-                counts_array[key] += 1.0
-            except KeyError:
-                continue
-
-        bn.cpt(node).fillWith(counts_array.flatten().tolist())
+    return len(signatures) == len(bn_vec)
 
 
-# Compact a dictionary to be printable
-def compact_dict(d):
-    new_dict = {}
-    for k, v in d.items():
-        if isinstance(v, np.ndarray):
-            new_dict[k] = (
-                f"np.ndarray: [{v[0]:.2g}, {v[1]:.2g}, ..., {v[-1]:.2g}], length={len(v)}"
-            )
-        else:
-            new_dict[k] = v
-    return new_dict
+# Extract BN min and BN max from a CN
+def get_min_max_bns(cn, exp: str = ""):
+
+    with TemporaryDirectory() as tmp_path:
+        cn.saveBNsMinMax(f"{tmp_path}/bn_min_{exp}.bif", f"{tmp_path}/bn_max_{exp}.bif")
+        bn_min = gum.loadBN(f"{tmp_path}/bn_min_{exp}.bif")
+        bn_max = gum.loadBN(f"{tmp_path}/bn_max_{exp}.bif")
+
+    return bn_min, bn_max
 
 
-# Create noisy BN by adding Laplacian noise (Zhang et al., 2017)
-def get_noisy_bn(bn, scale: float):
+# Generate a random CN with local IDM
+def generate_random_cn(n_nodes, edge_density, n_modmax, ess, s_size) -> tuple:
 
-    bn_ie = gum.LazyPropagation(bn)
-    bn_ie.makeInference()
+    # Generate a BN
+    bn_gen = gum.BNGenerator()
+    bn = bn_gen.generate(
+        n_nodes=n_nodes, n_arcs=int(n_nodes * edge_density), n_modmax=n_modmax
+    )
 
-    bn_noisy = gum.BayesNet(bn)
+    # Generate data
+    data_gen = gum.BNDatabaseGenerator(bn)
+    data_gen.drawSamples(s_size)
+    data = data_gen.to_pandas()
 
-    # For each node X ...
-    for node in bn.names():
+    # Learn the CN by local IDM
+    bn_counts = get_bn_counts(bn, data)
+    cn = gum.CredalNet(bn_counts)
+    cn.idmLearning(ess)
 
-        # Get the joint P(X, Pa(X))
-        joint = bn_ie.jointPosterior(bn.family(node))
-
-        # Add noise to P(X, Pa(X)) and normalize
-        noise = np.random.laplace(scale=scale, size=np.prod(joint.shape))
-        noisy_joint = np.clip(
-            joint.toarray().flatten() + noise, a_min=10e-10, a_max=None
-        )
-        noisy_joint = noisy_joint / np.sum(noisy_joint)
-        joint.fillWith(noisy_joint)
-
-        # Compute the conditional P(X | Pa(X))
-        cond = joint / joint.sumOut(node)
-
-        # Fill noisy BN
-        bn_noisy.cpt(node).fillWith(cond)
-
-    # Check noisy bn
-    bn_noisy.check()  # OK if = ().
-
-    return bn_noisy
+    return cn, data

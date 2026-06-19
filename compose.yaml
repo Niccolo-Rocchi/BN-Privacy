@@ -1,0 +1,77 @@
+version: '3.9'
+services:
+  cn_privacy_def_ran_atk_mle_delta0.1:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_ran
+    - atk_mec=atk_mle
+    - delta=0.1
+    - n_bns=1000
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_ran_atk_mle_delta0.1:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_ran_atk_mle_delta0.3:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_ran
+    - atk_mec=atk_mle
+    - delta=0.3
+    - n_bns=1000
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_ran_atk_mle_delta0.3:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_ran_atk_mle_delta0.5:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_ran
+    - atk_mec=atk_mle
+    - delta=0.5
+    - n_bns=1000
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_ran_atk_mle_delta0.5:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_ran_atk_mle_delta0.7:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_ran
+    - atk_mec=atk_mle
+    - delta=0.7
+    - n_bns=1000
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_ran_atk_mle_delta0.7:/workspace/experiments/cn_privacy/output
+  cn_privacy_def_ran_atk_mle_delta1.0:
+    build: .
+    command:
+    - python
+    - -m
+    - experiments.cn_privacy.exp
+    - def_mec=def_ran
+    - atk_mec=atk_mle
+    - delta=1.0
+    - n_bns=1000
+    image: bnp:2025
+    volumes:
+    - ./experiments/cn_privacy/bns:/workspace/experiments/cn_privacy/bns
+    - ./experiments/cn_privacy/data:/workspace/experiments/cn_privacy/data
+    - ./experiments/cn_privacy/output_def_ran_atk_mle_delta1.0:/workspace/experiments/cn_privacy/output

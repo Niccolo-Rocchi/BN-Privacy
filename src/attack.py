@@ -1,0 +1,121 @@
+import inspect
+
+import numpy as np
+import pandas as pd
+import pyagrum as gum
+
+from src.config import get_cur_dir, set_seed
+from src.mia import get_ll
+from src.utils import centroid_cn, maxent_cn, mle_cn, mne_cn, ran_cn
+
+
+# Apply attack mechanism to a BN, namely, derive a BN from a CN
+def attack_mechanism(exp, config, atk_mec, atk_args) -> None:
+
+    # Get current directory
+    cur_dir = get_cur_dir(config)
+
+    # Read data
+    gpop = pd.read_csv(f'{cur_dir / config["data_path"]}/{exp}.csv')
+    base_path = cur_dir / config["cns_path"]
+
+    # Set seed
+    set_seed()
+
+    # For each data sample ...
+    for sample in range(config["samples"]):
+
+        # ... read the related CN
+        bn_min = gum.loadBN(f"{base_path}/bn_min_{exp}_sample{sample}.bif")
+        bn_max = gum.loadBN(f"{base_path}/bn_max_{exp}_sample{sample}.bif")
+
+        # ... retrieve rpop, ...
+        rpop = gpop[gpop[f"in-rpop-{sample}"]].iloc[:, : len(bn_min.nodes())]
+
+        # ... and derive the BN
+        atk_mec_fn = globals()[atk_mec]  # Get the related function
+        sig = inspect.signature(atk_mec_fn)  # Get its signature
+        args = {
+            k: v
+            for k, v in {
+                "bn_min": bn_min,
+                "bn_max": bn_max,
+                "data": rpop,
+                "n_bns": atk_args.get("n_bns", None),
+            }.items()
+            if k in sig.parameters
+        }
+        bn = atk_mec_fn(**args)
+
+        # Save results
+        gum.saveBN(
+            bn, f'{cur_dir / config["atk_path"]}/{f"bn_{exp}_sample{sample}"}.bif'
+        )
+
+    return
+
+
+# Get the BN inside a CN with max entropy distribution
+def atk_ent(bn_min, bn_max):
+
+    bn = maxent_cn(bn_min, bn_max)
+
+    return bn
+
+
+# Get a random BN inside a CN
+def atk_ran(bn_min, bn_max):
+
+    bn = ran_cn(bn_min, bn_max)
+
+    return bn
+
+
+# Get the centroid of a CN
+def atk_cen(bn_min, bn_max):
+
+    bn = centroid_cn(bn_min, bn_max)
+
+    return bn
+
+
+# Get the maximum likelihood BN inside a CN
+def atk_mle(bn_min, bn_max, data):
+
+    bn = mle_cn(bn_min, bn_max, data)
+
+    return bn
+
+
+# Get the minimum likelihood BN inside a CN, i.e., the maximum negative likelihood (MNE) BN.
+def atk_mne(bn_min, bn_max, data):
+
+    bn = mne_cn(bn_min, bn_max, data)
+
+    return bn
+
+
+# Get the maximum negative likelihood BN within a CN
+def mne_bn(bns_sample, data):
+    """
+    Given a list `bns_sample` of BNs,
+    find argmax_{BN in bns_sample} -ll(BN | data),
+    where ll is the log-likelihood function.
+    """
+
+    mne_bn = None
+    mne = 0
+
+    for bn in bns_sample:
+
+        # Estimate the likelihood of data
+        bn_ie = gum.LazyPropagation(bn)
+        llr_im = data.apply(lambda x: get_ll(x.to_dict(), bn_ie), axis=1).dropna()
+        llr = np.sum(llr_im)
+        neg_llr = -llr
+
+        if neg_llr > mne:
+            mne_bn = bn
+            mne = neg_llr
+
+    return mne_bn
