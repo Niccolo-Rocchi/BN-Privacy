@@ -1,6 +1,6 @@
-# Towards Privacy-Aware Bayesian Networks: A Credal Approach
+# Imprecise Probabilities for Privacy–Accuracy Trade-offs in Bayesian Networks
 
-Code for paper ["Towards Privacy-Aware Bayesian Networks: A Credal Approach"](https://doi.org/10.3233/FAIA251419) presented at [ECAI 2025](https://ecai2025.org/).
+Code for paper "Imprecise Probabilities for Privacy–Accuracy Trade-offs in Bayesian Networks" presented at [UAI 2026](https://www.auai.org/uai2026/).
 
 ## Set up Python environment
 
