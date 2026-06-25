@@ -9,7 +9,7 @@ from numpy.random import randint
 from src.config import get_cur_dir, safe_assert, set_seed
 
 
-def generate_naivebayes(config):
+def generate_naivebayes(config, uniform:bool = False):
 
     # Set paths
     cur_dir = get_cur_dir(config)
@@ -37,6 +37,14 @@ def generate_naivebayes(config):
 
         # ... generate BN, ...
         bn = gum.fastBN(bn_str)
+        if uniform:
+            for var in bn.names():
+                cpt = np.atleast_2d(bn.cpt(var)[:])
+                shape = cpt.shape
+                unif_cpt = np.ones(shape) / shape[1]
+                if shape==(1, 2):
+                    unif_cpt = unif_cpt[0]
+                bn.cpt(var)[:] = unif_cpt
         gum.saveBN(bn, f'{bns_path / "gt"}/{f"exp{i}"}.bif')
 
         with open(f'{cur_dir}/{config["exp_meta"]}', "a") as m:
