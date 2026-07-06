@@ -23,7 +23,7 @@ pool_prop: 0.25                                     # Sample size of pool popula
 samples: 50                                         # Number of data samples
 
 # MIA
-error: 'np.logspace(-4, 0, 30, endpoint=False)'     # Type-I errors vector
+error: 'np.logspace(-4, -1, 30, endpoint=True)'     # Type-I errors vector
 
 # Noisy BN
 tol: 0.01                                           # To find eps s.t. |AUC(eps) - AUC(CN)| < tol
