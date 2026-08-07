@@ -8,7 +8,7 @@ from more_itertools import random_product
 
 import src.defense
 from src.config import get_cur_dir, safe_assert, set_seed
-from src.defense import noisy_bn
+from src.defense import noisy_bn_PB
 from src.learning import learn_bn_params
 from src.utils import get_min_max_bns
 
@@ -59,7 +59,7 @@ def inferences(exp, config, def_mec, def_args):
 
     # Learn noisy BN from gpop                      #TODO: save results
     scale = (2 * bn.size()) / (len(gpop) * eps)
-    bn_noisy = noisy_bn(bn, scale)
+    bn_noisy = noisy_bn_PB(bn, scale)
 
     # Run inferences
     try:

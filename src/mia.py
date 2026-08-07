@@ -7,7 +7,7 @@ from scipy.stats import norm
 from sklearn import metrics
 
 from src.config import get_cur_dir, safe_assert, set_seed
-from src.defense import noisy_bn
+from src.defense import noisy_bn_PB
 
 
 # MIA attack vs a BN
@@ -207,7 +207,7 @@ def find_epsilon(exp, config) -> dict:
 
             # Get noisy BN
             scale = (2 * bn_theta_hat.size()) / (pool_ss * eps)
-            bn_noisy = noisy_bn(bn_theta_hat, scale)
+            bn_noisy = noisy_bn_PB(bn_theta_hat, scale)
 
             # Perform membership inference on gpop
             power_vec, auc = run_mia(
@@ -232,7 +232,7 @@ def find_epsilon(exp, config) -> dict:
 
     # Return
     auc_res["epsilon"] = auc_res.apply(lambda row: eps_dict[row["sample"]], axis=1)
-    auc_res["auc_noisy_bn"] = auc_res.apply(
+    auc_res["auc_noisy_bn_PB"] = auc_res.apply(
         lambda row: auc_noisy_dict[row["sample"]], axis=1
     )
 

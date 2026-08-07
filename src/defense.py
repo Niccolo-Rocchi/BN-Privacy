@@ -5,7 +5,7 @@ import pandas as pd
 import pyagrum as gum
 
 from src.config import get_cur_dir, safe_assert, set_seed
-from src.utils import get_bn_counts, check_consistency, get_min_max_bns
+from src.utils import get_bn_counts, check_consistency, get_min_max_bns, get_tabular_cpt
 
 
 # Apply defense mechanism to a BN, namely, derive a CN from a BN
@@ -154,8 +154,8 @@ def def_loc(bn, ess, data):
     return cn
 
 
-# Create noisy BN by adding Laplacian noise (Zhang et al., 2017)
-def noisy_bn(bn, scale: float):
+# Create noisy BN by adding Laplacian noise (from "PrivBayes" (PB) of Zhang et al., 2017)
+def noisy_bn_PB(bn, scale: float):
 
     bn_ie = gum.LazyPropagation(bn)
     bn_ie.makeInference()
@@ -184,5 +184,37 @@ def noisy_bn(bn, scale: float):
 
     # Check noisy bn
     bn_noisy.check()  # OK if = ().
+
+    return bn_noisy
+
+# Create noisy BN by adding Laplacian noise to the each conditional (C)
+def noisy_bn_C(bn, bn_count, eps:float):
+
+    bn_noisy = gum.BayesNet(bn)
+
+    # For each node X ...
+    for node in bn.names():
+
+        # Get CPTs
+        cpt = get_tabular_cpt(bn.cpt(node))
+        cpt_count = get_tabular_cpt(bn_count.cpt(node))
+
+        # Get noise
+        par_counts = np.clip(np.sum(cpt_count, axis=1), a_min=1e-6, a_max=None)
+        scale = (2 * bn.size()) / (par_counts * eps)
+        noise = np.random.laplace(scale=scale, size=cpt.T.shape)
+
+        # Get noisy CPT and normalize rows
+        cpt_noisy = cpt + noise.T
+        has_neg_value = np.any(cpt_noisy <0, axis=1).astype(int)
+        to_be_added = -np.min(cpt_noisy, axis=1)*has_neg_value
+        cpt_noisy += to_be_added[:, None]
+        cpt_noisy /= np.sum(cpt_noisy, axis=1)[:, None]
+
+        # Fill noisy BN
+        bn_noisy.cpt(node).fillWith(cpt_noisy.flatten())
+
+    # Check noisy bn
+    # print(bn_noisy.check(), flush=True)  # OK if = ().
 
     return bn_noisy
