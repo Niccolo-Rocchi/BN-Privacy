@@ -6,6 +6,7 @@ import cdd.gmp
 import cvxpy as cp
 import hopsy
 import numpy as np
+import pandas as pd
 import pyagrum as gum
 
 from src.config import safe_assert
@@ -14,47 +15,60 @@ from src.config import safe_assert
 # Create the BN storing the counts of events
 def get_bn_counts(bn, data):
 
-    # Init the BN
     bn_counts = gum.BayesNet(bn)
 
-    # For each node ...
     for node in bn.names():
+        cpt = bn.cpt(node)
+        var_names = [cpt.variable(i).name() for i in range(cpt.nbrDim())]
+        variables = [cpt.variable(i) for i in range(cpt.nbrDim())]
 
-        # ... create the CPT storing counts of events
-        counts = []
+        data_str = data[var_names].astype(str)
 
-        n_parents = len(bn.parents(node))
-        if n_parents != 0:
-            cpt = bn.cpt(node).topandas().reset_index()
-            parents = [str(x[0]) for x in cpt.columns[:n_parents]]
-            cpt.columns = parents + list(cpt[node].columns)
-            domain = [int(x) for x in cpt.columns[n_parents:]]
+        counts = (
+            data_str.value_counts(subset=var_names)
+            .rename("counts")
+            .reset_index()
+        )
+        counts_dict = {
+            tuple(row[v] for v in var_names): row["counts"]
+            for _, row in counts.iterrows()
+        }
 
-            for idx in range(len(cpt)):
-                counts_cond = []
-                query = dict(cpt.iloc[idx, :n_parents])
-                query_str = " & ".join([f"{k}=={v}" for k,v in query.items()])
-                data_cond = data.query(query_str)
-                for node_val in domain:
-                    counts_cond.append(len(data_cond[data_cond[node] == node_val]))
-                counts.append(counts_cond)
-
-                # Debug
-                safe_assert(sum(counts_cond) == len(data_cond))
-
-        else:
-            domain = [x[1] for x in bn.cpt(node).topandas().index]
-            for node_val in domain:
-                    counts.append(len(data[data[node] == node_val]))
-
-        counts = np.array(counts).flatten()
-        bn_counts.cpt(node).fillWith(counts.tolist())
-
-        # Debug
-        safe_assert(sum(counts) == len(data))
+        new_cpt = bn_counts.cpt(node)
+        inst = gum.Instantiation(new_cpt)
+        inst.setFirst()
+        total = 0
+        while not inst.end():
+            key = tuple(
+                var.label(inst.val(var_name))
+                for var, var_name in zip(variables, var_names)
+            )
+            c = counts_dict.get(key, 0)
+            new_cpt.set(inst, float(c))
+            total += c
+            inst.inc()
 
     return bn_counts
 
+# Get a bidimensional CPT
+def get_tabular_cpt(cpt) -> np.array:
+
+    cpt = np.atleast_2d(cpt[:])
+    if cpt.ndim == 2:
+        return cpt
+
+    n_rows, var_size = get_cpt_shape(cpt)
+
+    return cpt.reshape(n_rows, var_size)
+
+# Get the shape of a BN's CPT
+def get_cpt_shape(cpt) -> tuple:
+
+    cpt_arr = np.atleast_2d(cpt[:])
+    var_size = cpt_arr.shape[-1]
+    n_rows = np.prod(cpt_arr.shape[:-1])
+
+    return n_rows, var_size
 
 # Get the BN inside a CN with max entropy distribution
 def maxent_cn(bn_min, bn_max) -> gum.BayesNet:
