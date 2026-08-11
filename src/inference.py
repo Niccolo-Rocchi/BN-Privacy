@@ -1,5 +1,6 @@
 import inspect
 import math
+import traceback
 
 import numpy as np
 import pandas as pd
@@ -8,9 +9,9 @@ from more_itertools import random_product
 
 import src.defense
 from src.config import get_cur_dir, safe_assert, set_seed
-from src.defense import noisy_bn_PB
+from src.defense import noisy_bn_PB, noisy_bn_C
 from src.learning import learn_bn_params
-from src.utils import get_min_max_bns
+from src.utils import get_bn_counts, get_min_max_bns
 
 
 def inferences(exp, config, def_mec, def_args):
@@ -41,6 +42,7 @@ def inferences(exp, config, def_mec, def_args):
 
     # Learn BN from gpop                            #TODO: save results
     bn = learn_bn_params(gt, gpop)
+    bn_count = get_bn_counts(bn, gpop)
 
     # Learn CN from gpop (defense mechanism)        #TODO: save results
     def_mec_fn = getattr(src.defense, def_mec)  # Get the related function
@@ -67,8 +69,12 @@ def inferences(exp, config, def_mec, def_args):
         bn_mpes, bn_probs = run_inference_bn(bn, target, evid_vec)
         bn_noisy_mpes, bn_noisy_probs = run_inference_bn(bn_noisy, target, evid_vec)
         cn_mpes, cn_probs, cn_probs_alt = run_inference_cn(cn, target, evid_vec, exp)
-    except:
-        return
+    except Exception:
+
+        # Debug
+        with open(f"{config["results_path"]}/log.txt", "a") as log:
+            log.write(f"{exp}: error with inference.\n")
+            log.write(traceback.format_exc())
 
     # Save results
     results = pd.DataFrame(

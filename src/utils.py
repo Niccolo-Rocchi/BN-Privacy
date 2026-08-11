@@ -8,6 +8,7 @@ import hopsy
 import numpy as np
 import pandas as pd
 import pyagrum as gum
+from sklearn import metrics
 
 from src.config import safe_assert
 
@@ -677,3 +678,16 @@ def generate_random_cn(n_nodes, edge_density, n_modmax, ess, s_size) -> tuple:
     cn.idmLearning(ess)
 
     return cn, data
+
+# Partial AUC given truncted FPR and TPR.
+# (McClish correction: standardize result to be 0.5 if non-discriminant and 1 if maximal)
+def pauc_mcclish(fpr_trunc, tpr_trunc, max_fpr):
+
+    pauc = metrics.auc(fpr_trunc, tpr_trunc)
+
+    min_area = 0.5*max_fpr**2
+    max_area = max_fpr
+    
+    pauc_std = 0.5*(1+(pauc-min_area)/(max_area-min_area))
+
+    return pauc_std

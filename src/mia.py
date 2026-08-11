@@ -7,7 +7,8 @@ from scipy.stats import norm
 from sklearn import metrics
 
 from src.config import get_cur_dir, safe_assert, set_seed
-from src.defense import noisy_bn_PB
+from src.defense import noisy_bn_PB, noisy_bn_C
+from src.utils import get_bn_counts, pauc_mcclish
 
 
 # MIA attack vs a BN
@@ -195,6 +196,9 @@ def find_epsilon(exp, config) -> dict:
             f"{cur_dir}/{config['bns_path']}/pool/bn_{exp}_sample{sample}.bif"
         )
 
+        pool = gpop[gpop[f"in-pool-{sample}"]].iloc[:, : len(bn_theta_hat.nodes())]
+        bn_theta_hat_count = get_bn_counts(bn_theta_hat, pool)
+
         # ... get CN AUC, ...
         auc_cn = auc_res.loc[auc_res["sample"] == sample, "auc_cn"].values[0]
 
@@ -269,7 +273,7 @@ def run_mia(model, baseline, gpop, sample, error_vec):
         power_vec.append(power)
 
     # Compute and store AUC
-    auc = metrics.auc(error_vec, power_vec)
+    auc = pauc_mcclish(error_vec, power_vec, error_vec[-1])
 
     # Debug
     safe_assert(len(rpop) + len(eval_pop) == len(gpop))

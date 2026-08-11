@@ -92,7 +92,7 @@ def def_ran(bn, delta):
         # Debug
         safe_assert(np.all(cpt_min <= cpt))
         safe_assert(np.all(cpt_max >= cpt))
-        safe_assert(np.all(np.abs(cpt_max - cpt_min - delta) < 1e-6))
+        safe_assert(np.all(np.abs(cpt_max - cpt_min - delta) < 1e-8))
 
     # Build the CN from the extreme BNs
     cn = gum.CredalNet(bn_min, bn_max)
@@ -171,7 +171,7 @@ def noisy_bn_PB(bn, scale: float):
         # Add noise to P(X, Pa(X)) and normalize
         noise = np.random.laplace(scale=scale, size=np.prod(joint.shape))
         noisy_joint = np.clip(
-            joint.toarray().flatten() + noise, a_min=10e-9, a_max=None
+            joint.toarray().flatten() + noise, a_min=1e-8, a_max=None
         )
         noisy_joint = noisy_joint / np.sum(noisy_joint)
         joint.fillWith(noisy_joint)
@@ -200,7 +200,7 @@ def noisy_bn_C(bn, bn_count, eps:float):
         cpt_count = get_tabular_cpt(bn_count.cpt(node))
 
         # Get noise
-        par_counts = np.clip(np.sum(cpt_count, axis=1), a_min=1e-6, a_max=None)
+        par_counts = np.clip(np.sum(cpt_count, axis=1), a_min=1e-8, a_max=None)
         scale = (2 * bn.size()) / (par_counts * eps)
         noise = np.random.laplace(scale=scale, size=cpt.T.shape)
 
@@ -208,7 +208,7 @@ def noisy_bn_C(bn, bn_count, eps:float):
         cpt_noisy = cpt + noise.T
         has_neg_value = np.any(cpt_noisy <0, axis=1).astype(int)
         to_be_added = -np.min(cpt_noisy, axis=1)*has_neg_value
-        cpt_noisy += to_be_added[:, None]
+        cpt_noisy += to_be_added[:, None] + 1e-8
         cpt_noisy /= np.sum(cpt_noisy, axis=1)[:, None]
 
         # Fill noisy BN
