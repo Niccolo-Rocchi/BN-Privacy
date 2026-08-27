@@ -71,10 +71,11 @@ def inferences(exp, config, def_mec, def_args):
         cn_mpes, cn_probs, cn_probs_alt = run_inference_cn(cn, target, evid_vec, exp)
     except Exception:
 
-        # Debug
-        with open(f"{config["results_path"]}/log.txt", "a") as log:
-            log.write(f"{exp}: error with inference.\n")
-            log.write(traceback.format_exc())
+        # # Debug
+        # with open(f"{config['results_path']}/log.txt", "a") as log:   #Notice: the log file has to be created before uncommenting these lines
+        #     log.write(f"{exp}: error with inference.\n")
+        #     log.write(traceback.format_exc())
+        pass
 
     # Save results
     results = pd.DataFrame(

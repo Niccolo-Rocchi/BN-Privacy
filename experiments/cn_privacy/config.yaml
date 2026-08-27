@@ -21,7 +21,7 @@ pool_prop: 0.25                                     # Sample size of pool popula
 samples: 200                                        # Number of data samples
 
 # MIA
-error: 'np.logspace(-4, 0, 30, endpoint=False)'     # Type-I errors vector
+error: 'np.logspace(-4, 0, 30, endpoint=True)'     # Type-I errors vector
 
 # Other
 num_cores: 'multiprocessing.cpu_count() - 1'        # Number of threads to use for parallelization
